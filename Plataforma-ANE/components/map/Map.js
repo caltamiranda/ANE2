@@ -56,7 +56,7 @@ const Map = ({points=[], center=[], controls=true, offsetInit=[-0.05,0.05], offs
                 zoom: 11,
                 authOptions: {
                     authType: atlas.AuthenticationType.subscriptionKey,
-                    subscriptionKey: process.env.NEXT_PUBLIC_MAP_SECRET || "4tSo0G5WdLhEypShqrniGroi4sBc0RAbh1qn19Y7J1bak3BqQvJqJQQJ99AKACYeBjFbTfilAAAgAZMP3KDz",
+                    subscriptionKey: process.env.NEXT_PUBLIC_MAP_SECRET,
                 },
             });
 

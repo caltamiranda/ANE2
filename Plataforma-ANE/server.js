@@ -144,7 +144,7 @@ app.prepare().then(() => {
                 const rows = result.recordset;
 
                 const apiVersion = '1.0';
-                const apiKey = process.env.NEXT_PUBLIC_MAP_SECRET || '4tSo0G5WdLhEypShqrniGroi4sBc0RAbh1qn19Y7J1bak3BqQvJqJQQJ99AKACYeBjFbTfilAAAgAZMP3KDz';
+                const apiKey = process.env.NEXT_PUBLIC_MAP_SECRET;
                 const lang = 'es-ES';
                 const mapUrl = `https://atlas.microsoft.com/search/address/reverse/json/?api-version=${apiVersion}&subscription-key=${apiKey}&language=${lang}&query=${latitude}, ${longitude}`;
 
