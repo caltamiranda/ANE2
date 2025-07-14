@@ -1,0 +1,37 @@
+.accordionContent {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    margin-top: 12px;
+    min-height: 90%;
+}
+
+.insideContent {
+    display: flex;
+    flex-direction: column;
+    height: fit-content;
+    gap: 12px;
+}
+
+.accordionButton {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    color: var(--gray-text-tertiary);
+}
+
+.accordionButton p{
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.rotate {
+    transform: rotate(180deg);
+}

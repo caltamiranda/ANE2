@@ -1,0 +1,85 @@
+.mainContainer {
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.select {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-radius: 4px;
+    border: 0.5px solid var(--gray-text);
+    cursor: pointer;
+    background-color: #fff;
+    width: 100%;
+    color: var(--gray-text);
+    /* position: relative; */
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.select:disabled {
+    cursor: not-allowed;
+}
+
+.select p {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.upper {
+    text-transform: uppercase;
+}
+
+.icon{
+    width: 20px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.rotate {
+    transform: rotate(180deg);
+}
+
+.optionsContainer {
+    position: absolute;
+    width: 100%;
+    background-color: #fff;
+    border: 0.5px solid var(--gray-active);
+    border-radius: 4px;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    margin-top: 4px;
+    box-shadow: 0px 0px 8px 0px rgba(0, 0, 0, 0.2);
+}
+
+.option {
+    width: 100%;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--gray-text);
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    background-color: transparent;
+    border : none;
+}
+
+.option P {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.option:hover {
+    background-color: var(--gray-hover);
+}
+
+.option:active {
+    background-color: var(--gray-active);
+}
