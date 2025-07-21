@@ -1,0 +1,77 @@
+.sliderContainer {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    /* background-color: aqua; */
+    padding: 16px 0px;
+}
+
+.slider {
+    -webkit-appearance: none; /* Eliminar el estilo predeterminado de los navegadores */
+    appearance: none;
+    width: 100%;
+    height: 6px; /* Altura de la pista del slider */
+    background: #ddd; /* Color de la pista del slider */
+    outline: none; /* Eliminar el borde del slider */
+    border-radius: 4px;
+    /* background: linear-gradient(to right, var(--orange-primary) 0%, var(--orange-primary) var(--value), #ddd var(--value), #ddd 100%); */
+}
+
+.slider:hover {
+    opacity: 1; /* Opacidad del slider al pasar el cursor */
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none; /* Eliminar el estilo predeterminado de los navegadores */
+    appearance: none;
+    width: 15px; /* Ancho del pulgar del slider */
+    height: 15px; /* Altura del pulgar del slider */
+    background: var(--orange-primary); /* Color del pulgar del slider */
+    cursor: grab; /* Cambiar el cursor a una mano abierta */
+    border-radius: 50%; /* Hacer el pulgar redondo */
+    position: relative;
+}
+
+.slider::-webkit-slider-thumb:active {
+    cursor: grabbing; /* Cambiar el cursor a una mano cerrada cuando se toma el pulgar */
+}
+
+.slider::-moz-range-thumb {
+    width: 15px; /* Ancho del pulgar del slider */
+    height: 15px; /* Altura del pulgar del slider */
+    background: var(--orange-primary); /* Color del pulgar del slider */
+    cursor: grab; /* Cambiar el cursor a una mano abierta */
+    border-radius: 50%; /* Hacer el pulgar redondo */
+}
+
+.slider::-moz-range-thumb:active {
+    cursor: grabbing; /* Cambiar el cursor a una mano cerrada cuando se toma el pulgar */
+}
+
+.disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.tooltip {
+    position: absolute;
+    bottom: 100%; /* Posicionar el tooltip encima del slider */
+    transform: translateX(-50%);
+    background-color: #333;
+    color: #fff;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.left {
+    transform: translateX(0%);
+}
+
+.right {
+    transform: translateX(-100%);
+}

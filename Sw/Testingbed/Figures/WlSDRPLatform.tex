@@ -1,0 +1,39 @@
+
+\begin{tikzpicture}[scale=0.8, node distance=2cm and 3cm]  % Escala la gráfica para que encaje en la página
+
+    % Nodes
+    \node (wireless_list) [hexagon] {\begin{varwidth}{3cm}
+                List of\\
+                wireless\\
+                tech
+            \end{varwidth}
+        };
+    \node (mod_param1) [block, right=of wireless_list] {Modulation param};
+    \node (performance_metrics) [block, below=2cm of mod_param1, text width=4cm] {Selected performance metrics};
+    \node (mod_param2) [block, below=2cm of performance_metrics] {Modulation param};
+    \node (gpp_sdr) [hexagon, left=3cm of mod_param2]{\begin{varwidth}{3cm}
+                GPP\\
+                based SDR
+            \end{varwidth}
+        };
+    \node (map_req) [mydiamond, right=of performance_metrics, xshift=-1.5cm] {Map requirements};
+    \node (list_opt_sdr) [block, right=of map_req, xshift=-2cm] {List of Opt SDR};
+    \node (selected_sdr) [parallelogram, below=2cm of list_opt_sdr, text width=2cm] {Selected SDR};
+
+    % Arrows
+    \draw [arrow] (wireless_list) -- (mod_param1);
+    \draw [arrow] (mod_param1) -- (map_req);
+    \draw [arrow] (performance_metrics) -- (mod_param2);
+    \draw [arrow] (gpp_sdr) -- (mod_param2);
+    \draw [arrow] (mod_param2) -- (map_req);
+    \draw [arrow] (map_req) -- (list_opt_sdr);
+    \draw [arrow] (list_opt_sdr) -- (selected_sdr);
+    
+    % New arrow from "Selected performance metrics" to "Modulation param"
+    \draw [arrow] (performance_metrics) -- (mod_param1);
+    
+    % Dashed arrow
+    \draw [dashed_arrow] (wireless_list) |- (performance_metrics);
+
+\end{tikzpicture}
+

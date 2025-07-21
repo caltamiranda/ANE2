@@ -1,0 +1,1856 @@
+\documentclass[14pt]{book}
+\include{TFformat}
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\courseName}{\emph{Spectrum~Sensing~System
+}} 
+% Insert course name here
+\title{\courseName}
+
+% Headers and footers. See documentation for 'fancyhdr' package for more information.
+\lhead{\scriptsize\fontfamily{lmr}\courseName} % Left header
+% Center header
+\rhead{\thepage} % Right header
+\lfoot{} % Left footer
+\cfoot{\scriptsize\fontfamily{lmr} Electronics and Computing, UNAL, Manizales} % Center footer
+\rfoot{} % Right footer
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\providecommand{\H}{\texttt{HackRF~One}}
+ 
+\usepackage{svg} 
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\section*{Signal Processing \& Estimation Tasks} 
+
+\subsection*{Experimental Set-up}
+Experimental setup should minimize variability and maximize reproducibility.
+
+\begin{description}
+	\item[Standardized Data Acquisition] \;
+	
+	\begin{itemize}
+		\item \textit{Standardized Data Acquisition} Requirement for controlled conditions for signal collection, ensuring consistent sampling rates and minimizing external noise sources.
+		\item \textit{Calibration \& Normalization} Need for regular calibration of instruments and normalization techniques to maintain comparability between measurements.
+	\end{itemize}
+	\item[Robust Signal Processing Pipeline] 	
+	Implement modular and reproducible Python scripts for preprocessing, filtering, and analysis, leveraging PyTorch for efficiency. PSD Verification - If measuring spectral components, verify consistency in Welch's method parameters, such as windowing and overlap, to reduce bias.
+	\item[Visualization for Diagnostics] Use clear comparative plots to identify anomalies in signal trends across different experimental runs.
+	
+	\item[{Statistical Tests in Spectrum Sensing}] 
+	statistical tests help verify the consistency, accuracy, and significance of spectral components in spectrum sensing applications:
+	
+	\begin{itemize}
+		
+		\item[$\color{green} {\checkmark}$] Welch’s T-test - Compares mean spectral power across different sensing scenarios, helping detect significant changes in signal presence.
+		
+		"Optimal Threshold of Welch's Periodogram for Spectrum Sensing Under Noise Uncertainty".	\url{P:/P01 SDR/Chi-square.pdf}
+		\item[$\color{green} {\checkmark}$] Bootstrap Resampling - Estimates confidence intervals for spectral features, improving reliability in dynamic environments.
+		
+		"Robust Spectrum Sensing Using Moving Blocks Energy Detector with Bootstrap".
+		\item[$\color{green} {\checkmark}$] F-test for Variance Analysis - Compares the variance of spectral estimates across different sensing conditions, ensuring stability.
+		
+		"A Simple F-Test Based Multi-Antenna Spectrum Sensing Technique".
+		\item Kolmogorov-Smirnov (KS) Test - Evaluates whether PSD distributions differ significantly between sensing periods, ensuring consistency across measurements.
+		
+		"Sequential and Parallelized FPGA Implementation of Spectrum Sensing Detector Based on Kolmogorov-Smirnov Test".
+		\item Chi-Square Goodness-of-Fit - Assesses whether observed spectral distributions match expected noise or signal models.
+		
+		"Spectrum Sensing Method Based on Goodness of Fit Test Using Chi-Square Distribution".
+		\item ANOVA for Multi-Scenario Analysis - Determines whether multiple sensing conditions exhibit statistically different spectral characteristics.
+		
+		"A Comparative Study of Different Entropies for Spectrum Sensing Techniques".
+		\item Shapiro-Wilk Test - Validates normality assumptions of PSD estimates, crucial for applying parametric statistical methods.
+		
+		"Spectrum Sensing Algorithm Based on Shapiro-Wilk Test".
+	\end{itemize}
+\end{description}
+ 
+\subsection*{Power Spectral Density (PSD) Estimation}
+
+Real-Time Implementation of Multiband Spectrum Sensing Using SDR
+\href{https://www.mdpi.com/1424-8220/21/10/3506}{${\bullet}$}. 
+
+Summary of key PSD estimation methods used in spectrum sensing: 
+
+\paragraph*{1. Periodogram $\color{green} {\checkmark}$}
+Given a discrete-time signal \( x[n] \), the periodogram estimates the PSD as the squared magnitude of its DFT:
+\[
+\hat{P}_{\text{per}}(f) =\promed{\left| x[n] e^{-j 2 \pi f n} \right|^2: \forall n=0,N-1} \quad f \in [0, 1)
+\]
+where \( N \) is the number of samples.
+ 
+{Properties}
+\begin{itemize}
+	\item \textbf{Resolution:} Determined by the length \( N \) of the signal. Larger \( N \) provides finer frequency resolution.
+	\item \textbf{Variance:} The periodogram is an inconsistent estimator; it does not converge to the true PSD as \( N \to \infty \), due to high variance.
+	\item \textbf{Spectral Leakage:} Abrupt windowing of the signal causes leakage, spreading power from strong frequencies into adjacent bins.
+\end{itemize}
+
+{Advantages}
+\begin{itemize}
+	\item Simple and fast to compute using the Fast Fourier Transform (FFT).
+	\item Useful for preliminary spectral exploration and real-time visualization.
+\end{itemize}
+
+{Disadvantages}
+\begin{itemize}
+	\item High variance and poor statistical consistency.
+	\item Low detectability in low SNR conditions.
+	\item Prone to spectral leakage, which may obscure weak signals.
+\end{itemize}
+
+{Application in Spectrum Sensing}
+\begin{itemize}
+	\item In the context of spectrum sensing, this enables the detection of spectral peaks that correspond to active transmissions (e.g., primary users in cognitive radio).
+	\item Identify spectral holes or vacant frequency bands.
+	\item Estimate energy in specific subbands for energy detection.
+	\item Serve as a baseline for comparison with more advanced PSD estimation methods (e.g., Welch, multitaper).
+	\item useful tool for fast spectrum estimation and provides valuable insights into signal occupancy. However, its limitations in resolution and variance often motivate the use of enhanced methods in practical spectrum sensing applications.
+\end{itemize}
+
+{Enhancements}
+To mitigate its limitations, the basic periodogram is often improved via:
+\begin{itemize}
+	\item \textbf{Averaging (Welch's method):} Reduces variance by averaging multiple periodograms.
+	\item \textbf{Windowing:} Applies tapering windows (e.g., Hamming) to reduce leakage.
+\end{itemize}
+
+\paragraph*{2. Welch's Method $\color{green} {\checkmark}$}
+This method segments the input signal into overlapping windows, applies a tapering window function to each segment, computes the periodogram of each windowed segment, and then averages the resulting spectra. {Step-by-Step Procedure}:
+
+Let \( x[n] \) be a signal of length \( N \):
+\begin{enumerate}
+	\item Divide \( x[n] \) into \( K \) overlapping segments, each of length \( L \).
+	\item Apply a window function \( w[n] \) (e.g., Hamming) to each segment:
+	\[
+	x_k[n] = x[n + kD] \cdot w[n], \quad 0 \leq n < L
+	\]
+	where \( D \) is the shift between segments (determines overlap).
+	\item Compute the modified periodogram for each windowed segment:
+	\[
+	\hat{P}_k(f) = \frac{1}{U} \left| \sum_{n=0}^{L-1} x_k[n] e^{-j 2\pi f n} \right|^2
+	\]
+	where \( U = \frac{1}{L} \sum_{n=0}^{L-1} w^2[n] \) is a normalization factor.
+	\item Average all \( K \) periodograms to obtain the final PSD estimate:
+	\[
+	\hat{P}_{\text{Welch}}(f) = \frac{1}{K} \sum_{k=0}^{K-1} \hat{P}_k(f)
+	\]
+\end{enumerate}
+
+{Advantages}
+\begin{itemize}
+	\item \textbf{Reduced Variance:} Averaging smooths fluctuations, leading to a more stable estimate.
+	\item \textbf{Tunable Parameters:} Window length, overlap, and tapering window can be optimized for specific applications.
+	\item \textbf{Spectral Leakage Control:} Use of tapering windows reduces spectral leakage.
+\end{itemize}
+{Disadvantages}
+\begin{itemize}
+	\item \textbf{Reduced Frequency Resolution:} Due to windowing and segmentation.
+	\item \textbf{Increased Computational Load:} Requires computing multiple DFTs.
+\end{itemize}
+{Application in Spectrum Sensing}
+\begin{itemize}
+	\item \textbf{Detection of Spectral Occupancy:} Identifies frequency bands with significant energy.
+	\item \textbf{Noise-Robust Detection:} Performs well in low SNR environments.
+	\item \textbf{Real-Time Monitoring:} Efficient enough for online spectral analysis in dynamic systems.
+	\item Welch's method offers a practical and effective compromise between spectral resolution and variance reduction. It is well-suited for real-world spectrum sensing tasks where signal detection reliability is critical under noisy and dynamic conditions.
+\end{itemize}
+
+{Enhancements for Welch's PSD Estimation}
+\begin{itemize}
+	\item \textbf{Adaptive Windowing:} Dynamically adjusting the window length or type (e.g., Hamming, Kaiser, Blackman) based on the detected signal characteristics can improve resolution or leakage suppression.
+	
+	\item \textbf{Overlap Optimization:} Increasing the overlap between segments (typically 50\% to 75\%) enhances averaging and reduces estimation variance, at the cost of computational complexity.
+	
+	\item \textbf{Window Function Selection:} Choosing window functions with better side-lobe suppression (e.g., Kaiser over Hamming) can mitigate spectral leakage and improve detectability of weak signals.
+	
+	\item \textbf{Multiresolution Analysis:} Integrating Welch’s method with multi-resolution techniques (e.g., applying it across varying segment lengths) can provide better insights into wideband or multiband environments.
+	
+	\item \textbf{Noise Floor Estimation:} Combining Welch's PSD with noise floor tracking methods helps in establishing dynamic detection thresholds for energy-based sensing.
+	
+	\item \textbf{Parallel and GPU Implementation:} For real-time applications, Welch’s method can be parallelized across segments and implemented on GPUs to accelerate processing.
+	
+	\item \textbf{Pre-Filtering:} Applying bandpass filtering prior to Welch’s PSD computation can enhance the signal-to-noise ratio (SNR) for targeted frequency bands.
+	
+	\item \textbf{Hybrid PSD Estimators:} Combining Welch’s output with model-based or multitaper methods can provide hybrid estimates that balance resolution and variance under specific conditions.
+\end{itemize}
+
+\textcolor{light-olive}{GNU Radio for PSD -- Welch's Method
+	\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA006b-85b5afa3a0e74113a2b93426013f0385}{${\bullet}$}}.
+
+\paragraph*{Multitaper Method (MTM) }
+
+Given a zero-mean discrete-time signal \( x[n] \), \( n = 0, 1, \ldots, N-1 \), the multitaper method estimates the power spectral density (PSD) by averaging multiple spectral estimates obtained via orthogonal taper functions.
+
+Let \( \{v_k[n]\}_{k=0}^{K-1} \) be a set of \( K \) orthogonal taper functions (typically Slepian sequences or discrete prolate spheroidal sequences, DPSS), each of length \( N \). The tapered versions of the signal are:
+
+\[
+x_k[n] = x[n] \cdot v_k[n], \quad k = 0, 1, \ldots, K-1.
+\]
+
+The discrete Fourier transform (DFT) of each tapered signal is:
+
+\[
+X_k(f) = \sum_{n=0}^{N-1} x[n] \, v_k[n] \, e^{-j2\pi f n}, \quad f \in [0, 1).
+\]
+
+The individual spectral estimates are:
+
+\[
+S_k(f) = \frac{1}{N} \left| X_k(f) \right|^2.
+\]
+
+The multitaper PSD estimate is obtained by averaging over the \( K \) spectral estimates:
+
+\[
+\hat{S}_{\text{MT}}(f) = \frac{1}{K} \sum_{k=0}^{K-1} S_k(f) = \frac{1}{K N} \sum_{k=0}^{K-1} \left| \sum_{n=0}^{N-1} x[n] v_k[n] e^{-j2\pi f n} \right|^2.
+\]
+
+This approach reduces variance without substantially compromising frequency resolution, particularly effective in short or noisy time series.
+
+\textbf{Advantages:} Reduces spectral leakage; low variance; high spectral resolution.\\
+\textbf{Disadvantages:} Increased computational demand; requires taper design.\\
+\textbf{Use Case:} Detection of weak signals in noisy environments.
+
+\halfcheckmark Multi-taper Method of PSD. Estimation based on multiple orthogonal tapers to reduce spectral leakage and variance.
+
+\textcolor{light-olive}{GNU Radio for PSD -- Multi-taper Method
+	\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA006a-99eea3209ecf4a188e9faf545908a2cb}{${\bullet}$}}.
+	
+\paragraph*{4. Autoregressive (AR) Model-Based Estimation}
+It assumes the signal is generated by an all-pole model excited by white noise.\\
+\textbf{Formula:}
+\[
+\hat{P}_{\text{AR}}(f) = \frac{\sigma^2}{\left|1 + \sum_{k=1}^p a_k e^{-j 2 \pi f k} \right|^2}
+\]
+\textbf{Advantages:} High resolution even with short data records.\\
+\textbf{Disadvantages:} Requires accurate model order selection; less effective for broadband signals.\\
+\textbf{Use Case:} Suitable for narrowband signal modeling and analysis.
+
+\paragraph*{5. Wavelet-Based PSD Estimation}
+It decomposes the signal using wavelet transforms and estimates power in each frequency band from the wavelet coefficients.\\
+\textbf{Advantages:} Good time-frequency localization; suitable for nonstationary signals.\\
+\textbf{Disadvantages:} Depends on wavelet choice and decomposition level.\\
+\textbf{Use Case:} Analysis of transient or nonstationary signals in dynamic spectral environments.
+
+\halfcheckmark Wavelet-based PSD estimation with denoising.
+
+\textcolor{light-olive}{GNU Radio for PSD -- Wavelet
+	\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA006c-5642732f7a2746bca9ec65e8005cb21a}{${\bullet}$}}. 
+
+\paragraph*{6. Eigenvalue-Based Detection (Cyclic Spectral Analysis)}
+It uses second-order statistics and eigenvalue distributions to detect periodicities or cyclostationarity in the signal spectrum.\\
+\textbf{Advantages:} Exploits signal structure; robust to interference.\\
+\textbf{Disadvantages:} Computationally intensive; requires prior knowledge of cyclic features.\\
+\textbf{Use Case:} Advanced detection of modulated signals in dense spectral environments.
+
+
+%----
+%\begin{list}{*}{}
+%	\item \halfcheckmark Multi-taper Method of PSD. Estimation based on multiple orthogonal tapers to reduce spectral leakage and variance.
+%	
+%	\textcolor{light-olive}{GNU Radio for PSD -- Multi-taper Method
+%		\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA006a-99eea3209ecf4a188e9faf545908a2cb}{${\bullet}$}}.
+%	\item \halfcheckmark Wavelet-based PSD estimation with denoising.
+%	
+%	\textcolor{light-olive}{GNU Radio for PSD -- Wavelet
+%		\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA006c-5642732f7a2746bca9ec65e8005cb21a}{${\bullet}$}}. 
+%	\item {\color[rgb]{0,.5,0}{\checkmark}} Welch's Method. Based on averaged histograms
+%	
+%	\textcolor{light-olive}{GNU Radio for PSD -- Welch's Method
+%		\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA006b-85b5afa3a0e74113a2b93426013f0385}{${\bullet}$}}.
+%	
+%	\item {\color[rgb]{0,.5,0}{\checkmark}} Neural Network-based Estimation
+%	
+%	\textcolor{light-olive}{GNU Radio for PSD -- Neural Networks
+%		\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA006d-ff64306bc6874291bd53409b5a03d1ee}{${\bullet}$}}. 
+%\end{list}
+%
+%\!
+%\begin{linenomath*}
+%	\begin{align*} 
+%		x(t) \in \mathcal{L}_2(\Real)\quad \textrm{nonrandom signal}\to	 \textrm{FT: } &\quad\mathcal{F}\{x(t)\}= X(\omega)\in \mathbb{C}\\
+%		\textrm{FT}\to\textrm{DFT}\to\textrm{FFT}&
+%		\quad \textrm{\textsl{Energy Spectral Density} }\to \textrm{\gc{Calculation}}\\
+%		\xi(t) \in \mathcal{L}_2(T)\quad \textrm{random signal}\to S_\xi(\omega) = \promed{\mathcal{F}_T\{\xi\}}
+%		&\quad\textrm{\textsl{Power Spectral Density}}\to \textrm{\gc{Estimation}}\\
+%		\textrm{Statistical Estimation}\to\textrm{Welsh's Method} &
+%		\quad \textrm{Heuristic Estimation}\to\textrm{MLP}
+%	\end{align*}
+%\end{linenomath*}
+%
+%\begin{figure}[!h]
+%	\centering
+%	\vspace*{-.9cm}
+%	\begin{tikzpicture}[
+%		plain/.style={
+%			draw=none,
+%			fill=none,
+%		},
+%		dot/.style={draw,shape=circle,minimum size=1.5pt,inner sep=0,fill=black
+%		},
+%		net/.style={
+%			matrix of nodes,
+%			nodes={
+%				draw,
+%				circle,
+%				inner sep=9pt
+%			},
+%			nodes in empty cells,
+%			column sep=0.6cm,
+%			row sep=-12pt
+%		},
+%		>=latex
+%		]
+%		\matrix[net] (mat)
+%		{
+%			|[plain]| \parbox{1cm}{\scriptsize\centering Input\\layer} 
+%			& |[plain]| \parbox{1cm}{\scriptsize\centering Hidden\\layer} 
+%			& |[plain]| \parbox{1cm}{\scriptsize\centering Output\\layer} \\
+%			& |[plain]| \\
+%			|[plain]| & & |[plain]| \\
+%			& |[plain]| & \\
+%			|[plain]| & |[dot]| \\
+%			& |[plain]| & |[dot]| \\
+%			|[plain]| & |[dot]| & |[plain]| \\
+%			|[dot]| & |[plain]| & |[dot]| \\
+%			|[dot]| & |[dot]| & |[plain]| \\
+%			|[dot]| & |[plain]| & \\
+%			|[plain]| & & |[plain]| \\
+%			& |[plain]| \\
+%		};
+%		\foreach \ai/\mi in {2/\scriptsize$\xi_1$,4/\scriptsize$\xi_2$,6/\scriptsize$\xi_3$,12/\scriptsize$\xi_T$}
+%		\draw[<-] (mat-\ai-1) -- node[above] {\mi} +(-.9cm,0);
+%		\foreach \ai in {2,4,6,12}
+%		{\foreach \aii/\mii in {3/\scriptsize$h_1$,11/\scriptsize$h_T$}
+%			\draw[->] (mat-\ai-1) -- (mat-\aii-2) node[yshift=0.6cm] {\mii};
+%		}
+%		\foreach \ai in {3,11}
+%		{ \draw[->] (mat-\ai-2) -- (mat-4-3);
+%			\draw[->] (mat-4-3) -- node[above] {\scriptsize$\hat{S}_\xi(\omega_1)$} +(1.8cm,0);}
+%		\foreach \ai in {3,11}
+%		{ \draw[->] (mat-\ai-2) -- (mat-10-3);
+%			\draw[->] (mat-10-3) -- node[above] {\scriptsize$\hat{S}_\xi(\omega_S)$} +(1.8cm,0);}
+%		\node[draw,align=left] at (0,-4.2) {\small \gc{MLP architecture for PSD Estimation}};	
+%	\end{tikzpicture}
+%\end{figure}
+%
+%
+%
+% \begin{itemize}
+% 	\item \textsl{PSD Estimation.} 
+% 	
+% 
+% 	\item \textsl{Power Strength Estimation}
+% 
+%\begin{itemize}
+%	\item
+%	Source Block: ${'osmosdr.source'}$ or equivalent.
+%	\item
+%	Frequency Translation 
+%	\item
+%	Demodulation 
+%	\item
+%	Power Calculation 
+%\end{itemize}
+%	\textcolor{light-olive}{GNU Radio for Power Strength Estimation
+%	\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA007-79fac29d13a64a82b5c79f057117d284}{${\bullet}$}}. 
+% 
+% 	\item \textsl{Signal-to-Noise ratio -- S/N} 
+% 	 
+% 	Real-time computation \textcolor{light-olive}{GNU Radio for S/N
+% 		\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA008-fff0a7f665f841baa87011a60437d22e}{${\bullet}$}}. 
+%
+%	\item \textsl{Energy Detection or Thresholding}
+%
+%{Detecci\'on de canal}: Valor reportado: presencia -- 1 , ausencia -- 0 por canal
+%
+%\begin{list}{*}{}
+%			\item 
+%			Energy Detection by $L_2$-based estimation and Entropy-based detection
+%			
+%			\textcolor{light-olive}{GNU Radio for Thresholding
+%				\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA009-63b205ed596a430f9c88cc914a7694ce}{${\bullet}$}}. 
+%			\item 
+%			Energy detection-based spectrum sensing machine
+%			\href{https://link.springer.com/chapter/10.1007/978-981-99-2710-4_24}{$\gc{\bullet}$}
+%			%\item[\checkmark] Shape signal Detection : correlation, cyclostationarity, covariance, waveform-based
+%			%\item[\checkmark] Matched Filter ($L_2$-based filtering)
+%			%\item[\checkmark] Matrix decomposition-based (eigenvalue detection)
+%			\item 
+%			Maximizing Eigenvalue Using Machine Learning
+%			\href{https://www.ijisae.org/index.php/IJISAE/article/view/3654}{$\gc{\bullet}$}
+%			\item 
+%			FlashFFTConv \href{https://medium.com/@multiplatform.ai/stanford-researchers-introduced-flashfftconv-to-optimize-fft-convolutions-for-long-sequences-in-3ce8706517a8}{$\gc{\bullet}$}
+%			\item 
+%			 Energy detection under noise power
+%			\href{https://www.sciencedirect.com/science/article/pii/S1110016822008018}{$\gc{\bullet}$} 
+%			\item 
+%			Multiscale Wavelet Transform Extremum Detection With the Spectrum Energy Detection
+%			\href{https://ieeexplore.ieee.org/abstract/document/10238706}{$\gc{\bullet}$}
+%			\item 
+%			Exploring DL for Adaptive Energy Detection Threshold Determination: A Multistage Approach
+%			\href{https://www.mdpi.com/2079-9292/12/19/4183}{$\gc{\bullet}$}
+%			\item 
+%			{\color[rgb]{0,.5,0}{\checkmark}} Deep Learning for Adaptive Energy Detection Threshold
+%			\href{https://www.mdpi.com/2079-9292/12/19/4183}{$\gc{\bullet}$}
+%\end{list}
+%
+%\item \textsl{Signal Classification}\rojo{falta}
+%
+%\item \textsl{Wideband Signal Processing} \rojo{falta}
+%
+%Channelization, filter banks, and multichannel sensing
+% 
+%\item \textsl{Two-antenna diversity}
+%
+%\begin{list}{*}{}
+%	\item By equal gain combining,
+%
+%.-	Two SDR Source blocks for the two antennas.\newline
+%.-	Two Complex to MagPhase blocks to extract magnitude and phase.\newline
+%.-	Add, Multiply, and Complex Multiply blocks to align phases and combine signals.\newline
+%.-	A Sink block (e.g., FFT Sink, QT GUI Sink) to visualize the combined signal.
+%
+%\textcolor{light-olive}{GNU Radio for Two-antenna diversity--equal gain combining
+%	\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA009-63b205ed596a430f9c88cc914a7694ce}{${\bullet}$}}.
+%	\item By maximal ratio combining.
+%		
+%	.-	Setup SDR Receivers: Configure two SDR devices to receive signals simultaneously.\newline
+%	.-	Calculate Weights: Calculate the optimal weights based on the received signal strengths.
+%	\newline
+%	.-	Maximal Ratio Combining: Combine the signals using the calculated weights.
+%	
+%	\textcolor{light-olive}{GNU Radio for Two-antenna diversity--equal gain combining
+%		\href{https://deepnote.com/workspace/german-castellanos-dominguez-6c6a-246f99fc-b475-4d54-9a79-81e3601710af/project/ANE-8875a419-1789-4110-9f86-9e57021c79b7/notebook/DA010b-20014e2a2fd4469185372a2b575741af}{${\bullet}$}}.
+%\end{list}
+%
+%\end{itemize}
+
+
+%\item
+% \gc{Spectrum Analyzer}
+%	\href{https://github.com/xmikos/qspectrumanalyzer}{$\gc{\bullet}$}
+%
+%Osmocom (open source mobile communications) is an open-source software project that implements multiple mobile communication standards
+%
+%.-	Device Arguments: rtl=0
+% \begin{python}
+% 	self.osmosdr_source = osmosdr.source(args="numchan=1 rtl=0")
+% \end{python}
+%.-	Sample Rate: 2M (or as per hardware capabilities)\newline
+%.-	Center Frequency ( Match the center frequency of the Osmocom Source): 100M (or as per interest)\newline
+%.-	Gain: 10
+%\bigskip
+% \begin{python}
+% # FFT computation
+% 
+%from gnuradio import gr, blocks, analog, filter, fft
+%import osmosdr
+%	
+%class spectral_calculation(gr.top_block):
+%	 def __init__(self):
+%	 gr.top_block.__init__(self, "Spectral Computation")
+%	
+%	 # Parameters
+%	 samp_rate = 2e6
+%	 center_freq = 100e6
+%	
+%	 # Source block
+%	 self.src = osmosdr.source(args="numchan=1")
+%	 self.src.set_sample_rate(samp_rate)
+%	 self.src.set_center_freq(center_freq)
+%	 self.src.set_gain(30)
+%	
+%	 # FFT block
+%	 self.fft_size = 1024
+%	 self.fft = fft.fft_vcc(self.fft_size, True, (), True)
+%	
+%	 # Stream to Vector for FFT
+%	 self.stream_to_vector = blocks.stream_to_vector(gr.sizeof_gr_complex*1, self.fft_size)
+%	
+%	 # Probe Signal for Output
+%	 self.probe = blocks.probe_signal_vf()
+%	
+%	 # Connections
+%	 self.connect(self.src, self.stream_to_vector, self.fft, self.probe)
+%	
+%	if __name__ == '__main__':
+%	 tb = spectral_calculation()
+%	 tb.start()
+%	 tb.wait()
+%	 # Example to read FFT output
+%	 fft_output = tb.probe.level()
+%	 print("FFT Output:", fft_output)
+%\end{python}
+%
+%\clearpage\newpage
+%
+%.-	Source Block: Set the frequency, sample rate, and other parameters specific to your SDR.\newline
+%.-	Throttle Block: Set the sample rate to match your source.\newline
+%.-	FFT Sink: Configure the FFT parameters (e.g., FFT size, averaging, etc.).
+% 
+% 	\begin{python}
+%# FFT Spectrum Analyzer
+%
+%from gnuradio import gr, blocks, fft, analog
+%from gnuradio import eng_notation
+%from gnuradio.fft import window
+%from gnuradio.filter import firdes
+%import osmosdr
+%import time
+%
+%class top_block(gr.top_block):
+%
+% def __init__(self):
+% gr.top_block.__init__(self, "FFT Spectrum Analyzer")
+%
+% # Variables
+% ##################################################
+% self.samp_rate = samp_rate = 1e6
+% self.freq = freq = 100e6
+%
+% # Blocks
+% ##################################################
+% self.rtlsdr_source_0 = osmosdr.source(args="numchan=1")
+% self.rtlsdr_source_0.set_sample_rate(samp_rate)
+% self.rtlsdr_source_0.set_center_freq(freq, 0)
+% self.rtlsdr_source_0.set_freq_corr(0, 0)
+% self.rtlsdr_source_0.set_dc_offset_mode(0, 0)
+% self.rtlsdr_source_0.set_iq_balance_mode(0, 0)
+% self.rtlsdr_source_0.set_gain_mode(False, 0)
+% self.rtlsdr_source_0.set_gain(10, 0)
+% self.rtlsdr_source_0.set_if_gain(20, 0)
+% self.rtlsdr_source_0.set_bb_gain(20, 0)
+% self.rtlsdr_source_0.set_antenna("", 0)
+% self.rtlsdr_source_0.set_bandwidth(0, 0)
+%
+% self.throttle_0 = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate,True)
+% self.fft_vxx_0 = fft.fft_vcc(1024, True, (window.blackmanharris(1024)), True, 1)
+% self.stream_to_vector_0 = blocks.stream_to_vector(gr.sizeof_gr_complex*1, 1024)
+% self.complex_to_mag_squared_0 = blocks.complex_to_mag_squared(1024)
+% self.sink = blocks.vector_sink_f()
+%
+% # Connections
+% ##################################################
+% self.connect((self.rtlsdr_source_0, 0), (self.throttle_0, 0))
+% self.connect((self.throttle_0, 0), (self.stream_to_vector_0, 0))
+% self.connect((self.stream_to_vector_0, 0), (self.fft_vxx_0, 0))
+% self.connect((self.fft_vxx_0, 0), (self.complex_to_mag_squared_0, 0))
+% self.connect((self.complex_to_mag_squared_0, 0), (self.sink, 0))
+%
+% if __name__ == '__main__':
+% tb = top_block()
+% tb.start()
+% try:
+% input('Press Enter to stop:')
+% except EOFError:
+% pass
+% tb.stop()
+% tb.wait()
+% 	\end{python}
+%\clearpage\newpage
+% 
+% QT GUI Frequency Sink (for spectrum visualization):\newline
+%.-	Center Frequency: Match the center frequency of the Osmocom Source\newline
+%.-	Bandwidth: Match the sample rate of the Osmocom Source
+%\begin{python}
+%# GNU FFT analyzer with spectrum visualization
+% 
+%import sys
+%from gnuradio import gr, blocks, filter, analog
+%from gnuradio import qtgui
+%from gnuradio import osmosdr
+%from gnuradio.qtgui import Range, RangeWidget
+%from PyQt5 import Qt
+%import sip
+%
+%class spectrum_analyzer(gr.top_block, Qt.QWidget):
+% def __init__(self):
+% # visualization
+% ##################################################
+% gr.top_block.__init__(self, "Spectrum Analyzer")
+% Qt.QWidget.__init__(self)
+% self.setWindowTitle("Spectrum Analyzer")
+% qtgui.util.check_set_qss()
+% self.top_scroll_layout = Qt.QVBoxLayout()
+% self.setLayout(self.top_scroll_layout)
+% self.top_scroll = Qt.QScrollArea()
+% self.top_scroll.setFrameStyle(Qt.QFrame.NoFrame)
+% self.top_scroll_layout.addWidget(self.top_scroll)
+% self.top_scroll.setWidgetResizable(True)
+% self.top_widget = Qt.QWidget()
+% self.top_scroll.setWidget(self.top_widget)
+% self.top_layout = Qt.QVBoxLayout(self.top_widget)
+% self.top_grid_layout = Qt.QGridLayout()
+% self.top_layout.addLayout(self.top_grid_layout)
+% 
+% self.settings = Qt.QSettings("GNU Radio", "spectrum_analyzer")
+% 
+% # Variables
+% ##################################################
+% self.samp_rate = 2e6
+% self.center_freq = 100e6
+%
+% # Blocks
+% ##################################################
+% self.osmosdr_source = osmosdr.source(args="numchan=1 rtl=0")
+% self.osmosdr_source.set_sample_rate(self.samp_rate)
+% self.osmosdr_source.set_center_freq(self.center_freq, 0)
+% self.osmosdr_source.set_freq_corr(0, 0)
+% self.osmosdr_source.set_dc_offset_mode(0, 0)
+% self.osmosdr_source.set_iq_balance_mode(0, 0)
+% self.osmosdr_source.set_gain_mode(False, 0)
+% self.osmosdr_source.set_gain(10, 0)
+% self.osmosdr_source.set_if_gain(20, 0)
+% self.osmosdr_source.set_bb_gain(20, 0)
+% self.osmosdr_source.set_antenna("", 0)
+% self.osmosdr_source.set_bandwidth(0, 0)
+% 
+% self.qtgui_freq_sink_x = qtgui.freq_sink_c(
+% 1024, #size
+% filter.firdes.WIN_BLACKMAN_hARRIS, #wintype
+% self.center_freq, #fc
+% self.samp_rate, #bw
+% "", #name
+% 1 #number of inputs
+% )
+% self.qtgui_freq_sink_x.set_update_time(0.10)
+% self.qtgui_freq_sink_x.set_y_axis(-140, 10)
+% self.qtgui_freq_sink_x.set_y_label('Relative Gain', 'dB')
+% self.qtgui_freq_sink_x.set_trigger_mode(qtgui.TRIG_MODE_FREE, 0.0, 0, "")
+% self.qtgui_freq_sink_x.enable_autoscale(False)
+% self.qtgui_freq_sink_x.enable_grid(False)
+% self.qtgui_freq_sink_x.set_fft_average(1.0)
+% self.qtgui_freq_sink_x.enable_axis_labels(True)
+% self.qtgui_freq_sink_x.enable_control_panel(False)
+% 
+% self._qtgui_freq_sink_x_win = sip.wrapinstance(self.qtgui_freq_sink_x.qwidget(), Qt.QWidget)
+% self.top_layout.addWidget(self._qtgui_freq_sink_x_win)
+% 
+% self.connect((self.osmosdr_source, 0), (self.qtgui_freq_sink_x, 0))
+% 
+% if __name__ == '__main__':
+% qapp = Qt.QApplication(sys.argv)
+% tb = spectrum_analyzer()
+% tb.start()
+% tb.show()
+% def quitting():
+% tb.stop()
+% tb.wait()
+% qapp.connect(qapp, Qt.SIGNAL("aboutToQuit()"), quitting)
+% qapp.exec_()
+% \end{python}
+% 
+% [\checkmark] Spectrum-Analyzer
+% 
+%Git-hub spectrum-analyzer \href{https://github.com/topics/spectrum-analyzer?l=python}{$\gc{\bullet}$}\newline
+%PyQtGraph based GUI for soapy power 
+% \href{https://github.com/xmikos/qspectrumanalyzer}{$\gc{\bullet}$}\newline
+%Fast Power Spectrum Sensing
+% \href{https://github.com/xmikos/qspectrumanalyzer}{$\gc{\bullet}$}
+
+%\clearpage\newpage
+%\begin{enumerate}
+%	\item \gc{VHF Frequency Scanning}
+%
+%1.	Osmocom Source: To interface with your RTL-SDR hardware.\newline
+%2.	Frequency Sink: To visualize the frequency spectrum.\newline
+%3.	Frequency Selector: To scan through different frequencies.
+%\begin{python}
+%#!/usr/bin/env python3
+%# -*- coding: utf-8 -*-
+%
+%import sys
+%from gnuradio import gr, blocks, analog, qtgui, osmosdr
+%from PyQt5 import Qt
+%import sip
+%import numpy as np
+%import time
+%
+%class vhf_scanner(gr.top_block, Qt.QWidget):
+% def __init__(self):
+% gr.top_block.__init__(self, "VHF Scanner")
+% Qt.QWidget.__init__(self)
+% self.setWindowTitle("VHF Scanner")
+% qtgui.util.check_set_qss()
+% self.top_scroll_layout = Qt.QVBoxLayout()
+% self.setLayout(self.top_scroll_layout)
+% self.top_scroll = Qt.QScrollArea()
+% self.top_scroll.setFrameStyle(Qt.QFrame.NoFrame)
+% self.top_scroll_layout.addWidget(self.top_scroll)
+% self.top_scroll.setWidgetResizable(True)
+% self.top_widget = Qt.QWidget()
+% self.top_scroll.setWidget(self.top_widget)
+% self.top_layout = Qt.QVBoxLayout(self.top_widget)
+% self.top_grid_layout = Qt.QGridLayout()
+% self.top_layout.addLayout(self.top_grid_layout)
+%
+% self.settings = Qt.QSettings("GNU Radio", "vhf_scanner")
+%
+% self.samp_rate = 2e6
+% self.start_freq = 88e6
+% self.stop_freq = 108e6
+% self.step_freq = 1e6
+% self.dwell_time = 1
+% self.center_freq = self.start_freq
+%
+% # Blocks
+% ###################
+% # Osmocom Source
+% ###################
+% self.osmosdr_source = osmosdr.source(args="numchan=1 rtl=0")
+% self.osmosdr_source.set_sample_rate(self.samp_rate)
+% self.osmosdr_source.set_center_freq(self.center_freq, 0)
+% self.osmosdr_source.set_freq_corr(0, 0)
+% self.osmosdr_source.set_dc_offset_mode(0, 0)
+% self.osmosdr_source.set_iq_balance_mode(0, 0)
+% self.osmosdr_source.set_gain_mode(False, 0)
+% self.osmosdr_source.set_gain(10, 0)
+% self.osmosdr_source.set_if_gain(20, 0)
+% self.osmosdr_source.set_bb_gain(20, 0)
+% self.osmosdr_source.set_antenna("", 0)
+% self.osmosdr_source.set_bandwidth(0, 0)
+%
+% self.throttle = blocks.throttle(gr.sizeof_gr_complex*1, self.samp_rate,True)
+%
+%
+% # Frequency Sink
+% ###################
+% self.qtgui_freq_sink_x = qtgui.freq_sink_c(
+% 1024, # FFT size
+% qtgui.WIN_BLACKMAN_hARRIS, # Window function
+% self.center_freq, # Center frequency
+% self.samp_rate, # Sample rate
+% "Frequency Spectrum", # Name
+% 1 # Number of inputs
+% )
+% self.qtgui_freq_sink_x.set_update_time(0.10)
+% self.qtgui_freq_sink_x.set_y_axis(-140, 10)
+% self.qtgui_freq_sink_x.set_y_label('Relative Gain', 'dB')
+% self.qtgui_freq_sink_x.enable_autoscale(False)
+% self.qtgui_freq_sink_x.enable_grid(False)
+% self.qtgui_freq_sink_x.set_fft_average(1.0)
+% self.qtgui_freq_sink_x.enable_axis_labels(True)
+% self.qtgui_freq_sink_x.enable_control_panel(False)
+%
+% self._qtgui_freq_sink_x_win = sip.wrapinstance(self.qtgui_freq_sink_x.qwidget(), Qt.QWidget)
+% self.top_layout.addWidget(self._qtgui_freq_sink_x_win)
+%
+% # Connections
+% self.connect((self.osmosdr_source, 0), (self.throttle, 0), (self.qtgui_freq_sink_x, 0))
+%
+% # Frequency Scanner Logic
+% self.freq_scanner()
+%
+% def freq_scanner(self):
+% import threading
+% def scan():
+% while True:
+% for freq in np.arange(self.start_freq, self.stop_freq, self.step_freq):
+% self.center_freq = freq
+% self.osmosdr_source.set_center_freq(self.center_freq, 0)
+% time.sleep(self.dwell_time)
+% thread = threading.Thread(target=scan)
+% thread.daemon = True
+% thread.start()
+%
+%if __name__ == '__main__':
+% qapp = Qt.QApplication(sys.argv)
+% tb = vhf_scanner()
+% tb.start()
+% tb.show()
+% def quitting():
+% tb.stop()
+% tb.wait()
+% qapp.connect(qapp, Qt.SIGNAL("aboutToQuit()"), quitting)
+% qapp.exec_()
+%\end{python}
+%
+%[\checkmark] VHF scanning
+%
+%AM and NFM scanner with multiple equally spaced channels 
+%\href{https://github.com/f4exb/sdrangel/blob/master/swagger/sdrangel/examples/scanner.py}{$\gc{\bullet}$}\newline
+%GNU Radio Schematic Marine VHF Channel Scanner
+%\href{https://jeremyclark.ca/wp/telecom/rtl-sdr-for-marine-vhf-scanner-on-gnu-radio/}{$\gc{\bullet}$}
+%
+%\clearpage\newpage
+%Two-antenna diversity by selection diversity
+%
+%
+%1.	Osmocom Source: To interface with your dual-channel SDR hardware.\newline
+%2.	Complex to Magnitude Squared: To calculate the power of the signals from each antenna.\newline
+%3.	Max Selector: To select the signal with the highest power. \newline
+%4.	Frequency Sink: For visualizing the frequency spectrum of the selected signal.
+%\newline
+%5.	Stream Selector: To select the appropriate signal stream.
+%
+%\begin{python}
+%#!/usr/bin/env python3
+%# -*- coding: utf-8 -*-
+%
+%import sys
+%from gnuradio import gr, blocks, analog, qtgui, osmosdr
+%from PyQt5 import Qt
+%import sip
+%
+%class max_selector(gr.sync_block):
+%def __init__(self):
+%gr.sync_block.__init__(self,
+%name="max_selector",
+%in_sig=[(gr.sizeof_gr_complex, 2)],
+%out_sig=[gr.sizeof_gr_complex])
+%
+%def work(self, input_items, output_items):
+%in0 = input_items[0][:, 0]
+%in1 = input_items[0][:, 1]
+%out = output_items[0]
+%
+%power0 = abs(in0) ** 2
+%power1 = abs(in1) ** 2
+%
+%if power0.mean() > power1.mean():
+%out[:] = in0
+%else:
+%out[:] = in1
+%
+%return len(output_items[0])
+%
+%class dual_channel_sdr(gr.top_block, Qt.QWidget):
+%def __init__(self):
+%gr.top_block.__init__(self, "Dual Channel SDR")
+%Qt.QWidget.__init__(self)
+%self.setWindowTitle("Dual Channel SDR")
+%qtgui.util.check_set_qss()
+%self.top_scroll_layout = Qt.QVBoxLayout()
+%self.setLayout(self.top_scroll_layout)
+%self.top_scroll = Qt.QScrollArea()
+%self.top_scroll.setFrameStyle(Qt.QFrame.NoFrame)
+%self.top_scroll_layout.addWidget(self.top_scroll)
+%self.top_scroll.setWidgetResizable(True)
+%self.top_widget = Qt.QWidget()
+%self.top_scroll.setWidget(self.top_widget)
+%self.top_layout = Qt.QVBoxLayout(self.top_widget)
+%self.top_grid_layout = Qt.QGridLayout()
+%self.top_layout.addLayout(self.top_grid_layout)
+%
+%self.settings = Qt.QSettings("GNU Radio", "dual_channel_sdr")
+%
+%self.samp_rate = 2e6
+%self.center_freq = 100e6
+%
+%# Blocks
+%self.osmosdr_source = osmosdr.source(args="numchan=2,rtl=0")
+%self.osmosdr_source.set_sample_rate(self.samp_rate)
+%self.osmosdr_source.set_center_freq(self.center_freq, 0)
+%self.osmosdr_source.set_center_freq(self.center_freq, 1)
+%self.osmosdr_source.set_freq_corr(0, 0)
+%self.osmosdr_source.set_freq_corr(0, 1)
+%self.osmosdr_source.set_dc_offset_mode(0, 0)
+%self.osmosdr_source.set_dc_offset_mode(0, 1)
+%self.osmosdr_source.set_iq_balance_mode(0, 0)
+%self.osmosdr_source.set_iq_balance_mode(0, 1)
+%self.osmosdr_source.set_gain_mode(False, 0)
+%self.osmosdr_source.set_gain_mode(False, 1)
+%self.osmosdr_source.set_gain(10, 0)
+%self.osmosdr_source.set_gain(10, 1)
+%self.osmosdr_source.set_if_gain(20, 0)
+%self.osmosdr_source.set_if_gain(20, 1)
+%self.osmosdr_source.set_bb_gain(20, 0)
+%self.osmosdr_source.set_bb_gain(20, 1)
+%self.osmosdr_source.set_antenna("", 0)
+%self.osmosdr_source.set_antenna("", 1)
+%self.osmosdr_source.set_bandwidth(0, 0)
+%self.osmosdr_source.set_bandwidth(0, 1)
+%
+%self.complex_to_mag_sq_0 = blocks.complex_to_mag_squared(1)
+%self.complex_to_mag_sq_1 = blocks.complex_to_mag_squared(1)
+%
+%self.max_selector = max_selector()
+%
+%self.qtgui_freq_sink_x_0 = qtgui.freq_sink_c(
+%1024, # FFT size
+%qtgui.WIN_BLACKMAN_hARRIS, # Window function
+%self.center_freq, # Center frequency
+%self.samp_rate, # Sample rate
+%"Frequency Spectrum", # Name
+%1 # Number of inputs
+%)
+%self.qtgui_freq_sink_x_0.set_update_time(0.10)
+%self.qtgui_freq_sink_x_0.set_y_axis(-140, 10)
+%self.qtgui_freq_sink_x_0.set_y_label('Relative Gain', 'dB')
+%self.qtgui_freq_sink_x_0.enable_autoscale(False)
+%self.qtgui_freq_sink_x_0.enable_grid(False)
+%self.qtgui_freq_sink_x_0.set_fft_average(1.0)
+%self.qtgui_freq_sink_x_0.enable_axis_labels(True)
+%self.qtgui_freq_sink_x_0.enable_control_panel(False)
+%
+%self._qtgui_freq_sink_x_0_win = sip.wrapinstance(self.qtgui_freq_sink_x_0.qwidget(), Qt.QWidget)
+%self.top_layout.addWidget(self._qtgui_freq_sink_x_0_win)
+%
+%# Connections
+%self.connect((self.osmosdr_source, 0), (self.complex_to_mag_sq_0, 0))
+%self.connect((self.osmosdr_source, 1), (self.complex_to_mag_sq_1, 0	
+%\end{python}
+%
+%
+%	 \begin{itemize}
+%	\item[\checkmark] rtlsdr-scanner, software defined radio frequency scanner que utiliza un chip Realtek RTL2832u para convertir las senales de radio anal\'ogicas en digitales
+%	\href{https://pypi.org/project/pyrtlsdr/}{$\gc{\checkmark}$} 
+%	Jason \href{https://github.com/nootedandrooted/rtl-sdr-close-call-monitor}{$\gc{\bullet}$}
+%	Raspberry Radio Scanner
+%	\href{https://www.hackster.io/news/top-dng-builds-a-600-digital-radio-scanner-on-the-cheap-with-a-raspberry-pi-5-and-rtl-sdr-18209905583e#:~:text=Pseudonymous%20YouTuber%20%22Top%20DNG%22%20has,at%20a%20far%20lower%20cost.}{$\gc{\bullet}$}
+%\end{itemize}
+%
+%\begin{figure}[!ht] 
+%	\centering
+%	{\resizebox{.72\columnwidth}{!}{\includegraphics{Figures/ANEV3.PNG}}} 
+%	
+%	\caption{Spectrum Monitoring Interface Design and System\href{https://ieeexplore.ieee.org/abstract/document/10366967}{$\rojo{\bullet}$}}
+%\end{figure}
+%\href{https://hackrf.readthedocs.io/en/latest/software_support.html}{$\gc{\bullet}$}. 
+%\texttt{QSpectrumAnalyzer}\href{https://github.com/xmikos/qspectrumanalyzer}{$\gc{\bullet}$}.
+%\texttt{gqrx}\href{https://www.gqrx.dk/}{$\gc{\bullet}$}
+%%%%%%%%%%%%%%%%%%%%%%%
+%\section{Spectrum~Sensing}
+%\begin{Tasks}{\Large
+%		\begin{list}{\checkmark}{}
+%			%\item[*] Spectrum Monitoring
+%			\item Signal Detection /
+%			
+%			\item Signal Classification
+%			
+%			\item Channel-State Estimation
+%			
+%			\item Decision Making
+%			
+%			\item Monitoring and System Management
+%		\end{list}
+%	}
+%\end{Tasks}
+%
+%\subsection{Signal~Detection}
+%\begin{Example}{1.8}{
+%		\begin{itemize}
+%			\item Data Collection and Assembly:
+%			\begin{itemize}
+%				\item Signal Reception Arrangement
+%				\item Sampling and ADC Conversion
+%				\item Data Storage
+%			\end{itemize}
+%			\bigskip
+%			\item Signal Conditioning
+%			\begin{itemize}
+%				\item Data cleaning and anomaly detection
+%				\item Narrowband Filtering and demodulation
+%				\item Wideband Signal Decimation		
+%			\end{itemize} 
+%		\end{itemize}
+%	}{SDR~Framework}
+%\end{Example}
+%
+%\begin{Example}{1.8}{
+%		\begin{itemize}
+%			\item Energy calculation
+%			\begin{itemize}
+%				\item Power Estimation and frequency scanning
+%				\item Noise (SNR) Estimation 
+%				\item Thresholding 
+%			\end{itemize}
+%		\end{itemize}
+%	}
+%	{Machine-Learning~Framework}
+%\end{Example}
+%\bigskip
+%Literature:
+%\begin{enumerate}
+%	\item A review of spectrum sensing in modern cognitive radio networks
+%	\href{https://link.springer.com/article/10.1007/s11235-023-01079-1}{$\gc{\bullet}$}
+%	\item Spectrum sensing in cognitive radio: A deep learning based model
+%	\href{https://onlinelibrary.wiley.com/doi/abs/10.1002/ett.4388?casa_token=CSLpGNx3jF4AAAAA:RMlcZhrFsz1ExBd-mnxjWJFFy1TQ7ykGc3DPYSSZK-_5jn1RpzcOzU133pz8_AVolI3-EWh5Z6g2zh0}{$\gc{\bullet}$}
+%	\item 
+%	A Review of Spectrum Sensing Techniques Based on Machine Learning
+%	\href{https://www.igi-global.com/pdf.aspx?tid=322771&ptid=307143&ctid=4&oa=true&isxn=9781668473665}{$\gc{\bullet}$}
+%	\item 
+%	Deep Neural Networks for Spectrum Sensing: A Review
+%	\href{https://ieeexplore.ieee.org/abstract/document/10217791}{$\gc{\bullet}$}
+%	
+%	\item Spectrum Sensing Techniques in Cognitive Radio Networks: A Survey
+%	\href{https://d1wqtxts1xzle7.cloudfront.net/116019700/3211ijngn03-libre.pdf?1718459109=&response-content-disposition=inline%3B+filename%3DSpectrum_Sensing_Techniques_in_Cognitive.pdf&Expires=1722656421&Signature=eBnkAbvBs1KyWzawZT3a9e~7p3FebNLytmDL-y2s95SLxQzzt5rvsbfWuq05Wz7V~5u0yelX88TM4PvmJ1Z9OlUKMVx2IvIntzaDn1RV8sQd~qlBduCenpzTObcomRkQYkORKqziAY2qFviFwptV9i1riZWKM4gTZkgKi2JWfdXjqDTQ7gT1Y6AW0Wynq2fCZ3zFgceEP5RmmS2ICMKY8HZeF9-IZjiJESJQDzveRl9vqjO6SxQuZIKxFYBBE2tXz1YAIOgbHeuxHx2Z6HQ00MfGnRyrBPY3Gl3HtC0iCYM5TKCCAfWmxntkw6LhXeFDtMANgl5ZEN5gewpAiPjL3Q__&Key-Pair-Id=APKAJLOHF5GGSLRBV4ZA}{$\gc{\bullet}$}
+%\end{enumerate}
+%\clearpage\newpage
+%\subsubsection{Data Collection and Assembly}
+%%Acquisition, down/sampling, storage, and preparation of sample sets holding primary information.
+%\bigskip
+%\begin{itemize}
+%	\item \textsl{Enhanced signal reception} 
+%	\begin{itemize}
+%		\item
+%		Diversity Antennas for reducing the impact of fading and shadowing: spatial diversity (using multiple antennas at different locations), polarization diversity (antennas with different polarization orientations), frequency diversity, and pattern diversity (antennas with different radiation patterns).
+%		\item 
+%		Enhanced Detection Sensitivity: By combining signals from multiple antennas, diversity combining techniques such as selection diversity, maximal ratio combining (MRC), or equal gain combining (EGC) can be employed to improve the detection sensitivity of spectrum sensing.
+%		\item 
+%		Multisensor Sensor Synchronization. Implementing diversity antennas adds complexity to the cognitive radio system, including hardware requirements and signal processing algorithms.
+%		
+%		Literature:
+%		
+%		\begin{itemize}
+%			\item
+%			Exploiting Space and Antenna Diversity for Wideband Spectrum Sensing
+%			\href{https://ieeexplore.ieee.org/abstract/document/9352919}{$\gc{\bullet}$}
+%			\item 
+%			Energy Detector and Diversity Techniques for Cooperative Spectrum Sensing
+%			\href{https://link.springer.com/chapter/10.1007/978-981-16-8554-5_17}{$\gc{\bullet}$}
+%			\item 
+%			Multiple antenna spectrum sensing
+%			\href{https://ieeexplore.ieee.org/abstract/document/5403561?casa_token=nGjY8wWhb2IAAAAA:NhCQEmYkC0HPAfOVqzDrPvrIhgNuQZgRc04q3eVnf9vOEa2QMeiKfO9oqhTFo9gj0zR_V2GUqf4}{$\gc{\bullet}$}
+%			\item 
+%			Multi-antenna receiver based on maximum-likelihood 
+%			\href{https://ieeexplore.ieee.org/abstract/document/10250901}{$\gc{\bullet}$} 
+%			\item SS Scheme for a Multi-Antenna Receiver
+%			\href{https://ieeexplore.ieee.org/abstract/document/10056401}{$\gc{\bullet}$}
+%			\item 
+%			Deep Learning-Based Spectrum Sensing Scheme for a Multi-Antenna Receiver	\href{https://ieeexplore.ieee.org/abstract/document/10056401}{$\gc{\bullet}$}
+%			
+%		\end{itemize}
+%		\bigskip
+%		\item Sampling and ADC conversion 
+%	\end{itemize}	
+%	\begin{itemize}
+%		\item Narrow-band sampling: 
+%		
+%		\begin{itemize}
+%			\item Nyquist-based, wavelet-based, 
+%			
+%			\item Oversampling with enhanced resolution.
+%			
+%		\end{itemize}
+%		\item Wide-band sampling: 
+%		
+%		Literature:
+%		\item 
+%		Recent Advances on Sub-Nyquist Sampling-Based Wideband Spectrum Sensing
+%		\href{https://ieeexplore.ieee.org/abstract/document/9448009}{$\gc{\bullet}$}
+%		
+%		\item Machine Learning Empowered Spectrum Sensing Under a Sub-Sampling Framework
+%		\href{https://ieeexplore.ieee.org/abstract/document/9756217}{$\gc{\bullet}$}
+%		
+%		\item
+%		Random sampling for effective spectrum sensing in cognitive radio time slotted environment
+%		\href{https://www.sciencedirect.com/science/article/abs/pii/S1874490721002196}{$\gc{\bullet}$}
+%		\item Multiantenna-Assisted Wideband Spectrum Sensing Based on Sub-Nyquist Sampling
+%		\href{https://ieeexplore.ieee.org/abstract/document/9292941}{$\gc{\bullet}$}
+%		\item
+%		Wideband Spectrum Sensing using Sub-Nyquist Sampling Approaches
+%		\href{https://ieeexplore.ieee.org/abstract/document/9221076}{$\gc{\bullet}$}
+%		\item
+%		Sub-Nyquist Sampling-Based Wideband Spectrum Sensing
+%		\href{https://arxiv.org/abs/2105.03029}{$\gc{\bullet}$}
+%		\item
+%		A compressed power spectrum estimation approach
+%		\href{https://link.springer.com/article/10.1007/s11704-022-2158-6
+%		}{$\gc{\bullet}$}
+%		\item 
+%		Sub-Nyquist sampling-based wideband spectrum sensing: a compressed power spectrum estimation approach
+%		\href{https://link.springer.com/article/10.1007/s11704-022-2158-6}{$\gc{\bullet}$}
+%		
+%		%\item Data Storage
+%		%\begin{itemize}
+%		%\item Real-time analysis / Off-line training and validation
+%		%	
+%		%\item 
+%		%Data Retention Policies dictated by regulatory requirements, operational needs, or privacy considerations.
+%		%	/
+%		%Data anonymization or encryption to protect sensitive information and ensure compliance with privacy regulations.
+%		%	
+%		%\item 
+%		%Data storage infrastructure for spectrum sensing applications may include local storage on cognitive radio devices, networked storage systems, or cloud-based storage solutions.
+%	\end{itemize}
+%\end{itemize}
+%\clearpage\newpage
+%
+%\subsubsection{Signal Conditioning}
+%\begin{itemize}
+%	
+%	\item Narrow-band Filtering and demodulation
+%	\begin{itemize}
+%		\item Narrow-band band pass and adaptive filtering to isolate specific signals or frequency bands of interest while suppressing noise and interference, improving the signal-to-noise ratio (SNR).
+%		
+%		\item Demodulation involves extracting the original information carried by modulated signals, such as voice, data, or multimedia content.
+%	\end{itemize}
+%	\item Wideband Signal Decimation
+%	\begin{itemize}
+%		\item Channelization, filter banks, and multichannel sensing
+%		
+%		\item Software-defined filters: Filtering implementation on software-defined radio (SDR) platforms (processing power, flexibility, cost, and power consumption).
+%	\end{itemize}
+%\end{itemize}
+%
+%\subsubsection{Energy Detection}
+%\begin{itemize}
+%	\item Narrowband Estimation
+%	\href{https://www.hindawi.com/journals/wcmc/2022/3933336/}{$\rojo{\bullet}$}
+%	\begin{itemize}
+%		\item Energy Detection ($L_2$-based estimation) and Entropy-based detection
+%		
+%		\item Shape signal Detection : correlation, cyclostationarity, covariance, waveform-based
+%		\item Matched Filter ($L_2$-based filtering)
+%		\item Matrix decomposition-based (eigenvalue detection)
+%		
+%		Detection tutorial
+%		\href{https://jcis.sbrt.org.br/jcis/article/view/811/534}{$\rojo{\bullet}$}
+%		Energy detection-based spectrum sensing machine
+%		\href{https://link.springer.com/chapter/10.1007/978-981-99-2710-4_24}{$\rojo{\bullet}$}
+%		Maximizing Eigenvalue Using Machine Learning
+%		\href{https://www.ijisae.org/index.php/IJISAE/article/view/3654}{$\rojo{\bullet}$}
+%		Energy detection under noise power
+%		\href{https://www.sciencedirect.com/science/article/pii/S1110016822008018}{$\rojo{\bullet}$} 
+%		\href{https://ieeexplore.ieee.org/abstract/document/10112923?casa_token=jIMGBzDKxycAAAAA:ghWqKpxK44z0lQNQuqRjHSidGwS2bzb-ddNdFOMXNaL7_iFaxtcDpCC9JegQA_KskCfX2uutuoQ}{$\rojo{\bullet}$} 
+%		Multiscale Wavelet Extremum Detection With the Spectrum Energy Detection
+%		\href{https://ieeexplore.ieee.org/abstract/document/10238706}{$\rojo{\bullet}$}
+%		Complex Rao Detector
+%		\href{https://ieeexplore.ieee.org/abstract/document/8546773?casa_token=nxpgRXbmB-wAAAAA:seTALFId3iEkbftTO1LaMb0O6EHeLiteV_L9uMJ8JSu_7zAjqmwZIZ6qVJSN48WUGffeCP2FVhc}{$\rojo{\bullet}$}
+%		LSTM detector
+%		\href{https://www.mdpi.com/1424-8220/22/6/2286}{$\rojo{\bullet}$}
+%		
+%		DL-based Signal detection
+%		\href{https://ieeexplore.ieee.org/abstract/document/10286309?casa_token=iL6FIEZE_48AAAAA:fdGco0glbWCcGRjTOhDuop0AWaO0KHegWCvOO0p-BkDFlNdggYMh88JVNxhrdoudH0_4HIHy8Ms}{$\rojo{\bullet}$}
+%		Exploring DL for Adaptive Energy Detection Threshold Determination: A Multistage Approach
+%		\href{https://www.mdpi.com/2079-9292/12/19/4183}{$\rojo{\bullet}$}Deep Learning for Adaptive Energy Detection Threshold
+%		\href{https://www.mdpi.com/2079-9292/12/19/4183}{$\rojo{\bullet}$}
+%	\end{itemize}
+%	\item Wideband Estimation
+%	\href{https://ieeexplore.ieee.org/abstract/document/9448009?casa_token=LkPdmTYO0agAAAAA:ZUProkXoXB7ShCxYTV5AxF1kUHtHGfsTFMECt9qX089q1HKmqHpZS21oJtkwWr7H6jvhFOktELU}{$\rojo{\bullet}$}
+%	\begin{itemize}
+%		\item Sub-Nyquist sampling-based wideband SS
+%		\href{https://link.springer.com/article/10.1007/s11704-022-2158-6}{$\rojo{\bullet}$}
+%		. Wavelet-based, 
+%		\item Filter-bank, and Multiple narrow bands
+%		
+%		Sub-Nyquist Sampling-Based Wideband Spectrum Sensing
+%		\href{https://ieeexplore.ieee.org/abstract/document/9448009?casa_token=l9cvomcPDyIAAAAA:zVfroh7X4DDjoDgjdx4HMq8bZdL2B59ZLTMt-Guw5J47x9SlLkABHO0w5cX9qQ_r61CO2sKUTjM}{$\rojo{\bullet}$}
+%	\end{itemize}
+%	\item Detection Performance Metrics:
+%	
+%	Detection Probability, missed detection probability, False Alarm Probability, and Receiver operating characteristics curves. Signal to Noise ratio (SNR). 
+%	Evaluating the practical performance of energy detector based spectrum sensing for cognitive radio
+%	\href{https://pubs.aip.org/aip/acp/article-abstract/2787/1/050007/2902495/Evaluating-the-practical-performance-of-energy?redirectedFrom=fulltext}{$\rojo{\bullet}$}
+%	\item Cooperative cognitive radio networks 
+%	
+%	Unwanted interference because of multipath fading and shadowing effects makes undetectable actual PU transmission (hidden-node problem).
+%\end{itemize}
+%
+%\clearpage\newpage
+%
+%%%\begin{python}
+%%%# GNU Radio flowgraph for FM SNR measurement
+%%%from gnuradio import gr, blocks, analog, filter, qtgui
+%%%
+%%%class fm_snr_example(gr.top_block):
+%%% def __init__(self):
+%%% gr.top_block.__init__(self, "FM SNR Example")
+%%% 
+%%% # Parameters
+%%% samp_rate = 1e6
+%%% freq = 100e6
+%%% noise_voltage = 0.1
+%%% 
+%%% # Blocks
+%%% self.src = analog.sig_source_c(samp_rate, analog.GR_COS_WAVE, freq, 1)
+%%% self.noise = analog.noise_source_c(analog.GR_GAUSSIAN, noise_voltage)
+%%% self.adder = blocks.add_vcc()
+%%% self.fm_demod = analog.wfm_rcv(pll_freq_max=5000, pll_freq_min=-5000)
+%%% self.fft = qtgui.freq_sink_f(1024, firdes.WIN_HAMMING, 0, samp_rate, "FFT Plot", 1)
+%%% 
+%%% # Connections
+%%% self.connect(self.src, (self.adder, 0))
+%%% self.connect(self.noise, (self.adder, 1))
+%%% self.connect(self.adder, self.fm_demod)
+%%% self.connect(self.fm_demod, self.fft)
+%%%
+%%%if __name__ == '__main__':
+%%% tb = fm_snr_example()
+%%% tb.start()
+%%% tb.wait()
+%%%
+%%%\end{python}
+%%\begin{python}
+%%from gnuradio import gr
+%%from gnuradio import blocks
+%%from gnuradio import analog
+%%from gnuradio import filter
+%%from gnuradio import audio
+%%from gnuradio import qtgui
+%%
+%%class fm_snr_example(gr.top_block):
+%%
+%% def __init__(self):
+%% gr.top_block.__init__(self, "FM SNR Example")
+%%
+%% # Parameters
+%% samp_rate = 2e6
+%% center_freq = 100e6 # Example FM station frequency
+%% audio_rate = 48e3
+%%
+%% # Blocks
+%% self.src = osmosdr.source(args="numchan=1")
+%% self.src.set_sample_rate(samp_rate)
+%% self.src.set_center_freq(center_freq)
+%% self.src.set_gain(30)
+%%
+%% self.chan_filt = filter.freq_xlating_fir_filter_ccf(1, (1,), 0, samp_rate)
+%%
+%% self.fm_demod = analog.wfm_rcv(quad_rate=samp_rate, audio_decimation=10)
+%% 
+%% self.audio_sink = audio.sink(int(audio_rate), '', True)
+%%
+%% self.throttle = blocks.throttle(gr.sizeof_gr_complex*1, samp_rate, True)
+%% 
+%% self.probe_signal = blocks.probe_signal_f()
+%%
+%% # Connections
+%% self.connect(self.src, self.chan_filt, self.fm_demod, self.audio_sink)
+%% self.connect(self.fm_demod, self.probe_signal)
+%%
+%% def get_snr(self):
+%% signal_power = self.probe_signal.level()
+%% noise_power = 1 # Placeholder, actual noise calculation needed
+%% snr = 10 * log10(signal_power / noise_power)
+%% return snr
+%%
+%%if __name__ == '__main__':
+%% tb = fm_snr_example()
+%% tb.start()
+%% tb.wait()
+%% print("SNR:", tb.get_snr())
+%%
+%%\end{python}
+%% 
+%%\item \gc{Detecci\'on de canal}
+%%
+%%Valor reportado: presencia -- 1 , ausencia -- 0 por canal
+%%
+%%\emph{Procedimiento asociado}: Threshold Energy Detection
+%% \begin{itemize}
+%%\item 
+%%Energy detection-based spectrum sensing machine
+%%\href{https://link.springer.com/chapter/10.1007/978-981-99-2710-4_24}{$\gc{\bullet}$}
+%%\item Practical Implementation of Adaptive Threshold Energy Detection using Software Defined Radio
+%%\href{https://ieeexplore.ieee.org/abstract/document/9268104}{$\gc{\bullet}$} 
+%%
+%%\end{itemize}
+%%
+%%Steps for Threshold Energy Detection:
+%%\begin{itemize}
+%%\item 
+%%Capture the Signal: Use an SDR to capture the FM signal.
+%%\item 
+%%Calculate Signal Energy: Compute the energy of the received signal over a given period.
+%%\item 
+%%Set Threshold: Define a threshold value based on the noise floor or a specific requirement.
+%%\item 
+%%Comparison: Compare the calculated energy to the threshold.
+%%\item 
+%%Decision: If the energy exceeds the threshold, detect the signal; otherwise, treat it as noise.
+%%\end{itemize}
+%%
+%%\begin{python}
+%%from gnuradio import gr, blocks, analog, filter
+%%import numpy as np
+%%
+%%class threshold_energy_detection(gr.top_block):
+%% def __init__(self):
+%% gr.top_block.__init__(self, "Threshold Energy Detection")
+%%
+%% # Parameters
+%% samp_rate = 2e6
+%% center_freq = 100e6
+%% threshold = 0.5 # Example threshold
+%%
+%% # Blocks
+%% self.src = osmosdr.source(args="numchan=1")
+%% self.src.set_sample_rate(samp_rate)
+%% self.src.set_center_freq(center_freq)
+%% self.src.set_gain(30)
+%%
+%% self.chan_filt = filter.freq_xlating_fir_filter_ccf(1, (1,), 0, samp_rate)
+%% self.fm_demod = analog.wfm_rcv(quad_rate=samp_rate, audio_decimation=10)
+%% self.probe_signal = blocks.probe_signal_f()
+%%
+%% # Connections
+%% self.connect(self.src, self.chan_filt, self.fm_demod, self.probe_signal)
+%%
+%% def detect_signal(self):
+%% signal_energy = self.probe_signal.level()
+%% if signal_energy > threshold:
+%% print("Signal Detected")
+%% else:
+%% print("No Signal Detected")
+%%
+%%if __name__ == '__main__':
+%% tb = threshold_energy_detection()
+%% tb.start()
+%% tb.wait()
+%% tb.detect_signal()
+%%
+%%\end{python}
+%%\end{list}
+%%\clearpage\newpage
+%%
+%%\subsubsection{SERVICIO Fijo y M\'ovil}
+%%rango de frecuencia: 137 MHz - 144 MHz, ancho de canal ? MHz, tiempo de observaci\'on [? min] periodicidad de medida [cada ?? min], espacialidad [Manizales, Bogot\'a, ???]
+%%
+%%\paragraph{Par\'ametros}
+%%
+%%\begin{list}{.-}{}
+%%\item \gc{Potencia}: 
+%%
+%%\emph{Procedimiento asociado}: {Narrowband Frequency Scanning}
+%%
+%%\item \gc{Signal-to-Noise ratio -- S/N }: 
+%%
+%%\emph{Procedimiento asociado}: {Narrowband Frequency Scanning}
+%%\begin{itemize}
+%%	\item Radio Frequency Detailed Scan from 240 to 960 MHz 
+%%	\href{https://rfds.tilda.ws/}{$\gc{\bullet}$}
+%%\href{https://people.skolelinux.org/pere/blog/rtlsdr_scanner__software_defined_radio_frequency_scanner_for_Linux____nice_free_software.html}{$\gc{\bullet}$}
+%%	\href{https://sourceforge.net/projects/rtlsdrscanner/}{$\gc{\bullet}$}
+%%
+%%Valor reportado: presencia -- 1 , ausencia -- 0 por canal
+%%\end{itemize}
+%%
+%%Valores reportados: S/N Max, S/N min, S/N media por canal
+%%
+%%\item \gc{Detecci\'on de canal}
+%%
+%%\emph{Procedimiento asociado}: Adaptive Threshold Energy Detection
+%%\begin{itemize}
+%%	\item Practical Implementation of Adaptive Threshold Energy Detection using Software Defined Radio
+%%\href{https://ieeexplore.ieee.org/abstract/document/9268104}{$\gc{\bullet}$} 
+%%
+%%\end{itemize}
+%%
+%%Valor reportado: presencia -- 1 , ausencia -- 0 por canal
+%%
+%%\end{list}
+%%\clearpage\newpage
+%% 
+%%\subsection*{Wideband Scanning }
+%%\begin{itemize}
+%%	\item Detailed Bluetooth LE Scanner with Python
+%%	\href{https://medium.com/@protobioengineering/how-to-make-a-detailed-bluetooth-le-scanner-with-a-macbook-and-python-8e2c7dccfd39}{$\gc{\bullet}$}
+%%	\item IoT-Scan: Network Reconnaissance for the Internet of Things
+%%	\href{https://ieeexplore.ieee.org/abstract/document/10299538}{$\gc{\bullet}$}
+%%	
+%%	Snout: A Middleware Platform for Software-Defined Radios
+%%	\href{https://ieeexplore.ieee.org/abstract/document/9925108}{$\gc{\bullet}$}
+%%	
+%%	LoRadar: An Efficient LoRa Channel Occupancy Acquirer based on Cross-channel Scanning
+%%	\href{https://ieeexplore.ieee.org/abstract/document/9796845}{$\gc{\bullet}$}
+%%	\item PytonDAQ
+%%		\href{https://iopscience.iop.org/article/10.1088/1742-6596/2511/1/012016/pdf}{$\gc{\bullet}$}
+%%	\item Radio Frequency Density Sensor to count mobile devices within a range
+%%\href{https://forums.raspberrypi.com/viewtopic.php?t=350821}{$\gc{\bullet}$}
+%%
+%%For analyzing the transmission protocols
+%%\href{https://ieeexplore.ieee.org/abstract/document/9731450}{$\gc{\bullet}$}
+%%\item Real-time Decoding of Satellite Signals
+%%\href{https://ieeexplore.ieee.org/abstract/document/1012677}{$\gc{\bullet}$}
+%%\item identification of open and closed channels	
+%%\href{https://pubs.gnuradio.org/index.php/grcon/article/view/110}{$\gc{\bullet}$}
+%%
+%%\item Drone Detection and Defense Systems: Survey and a Software-Defined Radio-Based Solution
+%%\href{https://www.mdpi.com/1424-8220/22/4/1453}{$\gc{\bullet}$}
+%%\end{itemize}
+%%\clearpage\newpage
+%%\section*{Informe}
+%%\begin{center}\date(\today)\end{center}
+%%\subsection{Signal~Detection}
+%%\begin{Example}{1.8}{
+%%\begin{itemize}
+%%	\item Data Collection and Assembly:
+%%	\begin{itemize}
+%%		\item Signal Reception Arrangement
+%%		\item[ \checkmark ] Sampling and ADC Conversion
+%%		\item Data Storage
+%%	\end{itemize}
+%%	\bigskip
+%%	\item Signal Conditioning
+%%	\begin{itemize}
+%%		\item Data cleaning and anomaly detection
+%%		\item[ \checkmark ] Narrowband Filtering and demodulation
+%%		\item Wideband Signal Decimation		
+%%	\end{itemize} 
+%%\end{itemize}
+%%}{Hardware Framework}
+%%\end{Example}
+%%
+%%\begin{Example}{1.8}{
+%%\begin{itemize}
+%%\item Energy calculation
+%%\begin{itemize}
+%%	\item Power Estimation and frequency scanning
+%%	\item Noise (SNR) Estimation 
+%%	\item Thresholding 
+%%\end{itemize}
+%%\end{itemize}
+%%}
+%%{Data Analysis}
+%%\end{Example}
+%%\subparagraph{Sampling and ADC conversion}
+%%	
+%%	\begin{itemize}
+%%	\item Narrow-band sampling: 
+%%	
+%%	\begin{itemize}
+%%	\item Nyquist-based, wavelet-based, 
+%%	
+%%	\item Oversampling with enhanced resolution
+%%	\end{itemize}
+%%	
+%%	\item Wide-band sampling: 
+%%	\begin{itemize}
+%%	\item Compressive sampling (decimation), multicoset sampling
+%%	
+%%	%\item Data Compression and Undersampling to feed NN estimators: sigma-delta modulation
+%%	\end{itemize}
+%%	\end{itemize}
+%%	
+%%\subparagraph{Signal Conditioning}
+%%\begin{itemize}
+%%
+%%	\item Narrow-band Filtering and demodulation
+%%	\begin{itemize}
+%%	\item Narrow-band band pass and adaptive filtering to isolate specific signals or frequency bands of interest while suppressing noise and interference, improving the signal-to-noise ratio (SNR) of the desired signals.
+%%	
+%%	\item Demodulation involves extracting the original information carried by modulated signals, such as voice, data, or multimedia content.
+%%	\end{itemize}
+%%	\item Wideband Signal Decimation
+%%	\begin{itemize}
+%%	\item Channelization, filter banks, and multichannel sensing
+%%	
+%%	\item Software-defined filters: Filtering implementation on software-defined radio (SDR) platforms (processing power, flexibility, cost, and power consumption).
+%%	\end{itemize}
+%%\end{itemize}
+%%
+%%\subparagraph{Energy Calculation}
+%%
+%%\begin{itemize}
+%%\item{Narrowband Frequency Scanning}
+%%\begin{itemize}
+%%	%\item Preliminary Design of the Laboratory Stand for Remote and Subsurface Sensing
+%%	%	\href{https://ieeexplore.ieee.org/abstract/document/10380333}{$\gc{\bullet}$}
+%%	\item spectrum-analyzer
+%%	\href{https://github.com/topics/spectrum-analyzer?l=python}{$\gc{\bullet}$}
+%%	\href{https://github.com/xmikos/qspectrumanalyzer}{$\gc{\bullet}$}	
+%%	\item Simple AM and NFM scanner with multiple equally spaced channels 
+%%	\href{https://github.com/f4exb/sdrangel/blob/master/swagger/sdrangel/examples/scanner.py}{$\gc{\bullet}$}
+%%	GNU Radio Schematic Marine VHF Channel Scanner
+%%\href{https://jeremyclark.ca/wp/telecom/rtl-sdr-for-marine-vhf-scanner-on-gnu-radio/}{$\gc{\bullet}$}
+%%	
+%%	\item rtlsdr-scanner, software defined radio frequency scanner que utiliza un chip Realtek RTL2832u para convertir las senales de radio anal\'ogicas en digitales
+%%	\href{https://pypi.org/project/pyrtlsdr/}{$\gc{\checkmark}$} 
+%%	Jason \href{https://github.com/nootedandrooted/rtl-sdr-close-call-monitor}{$\gc{\bullet}$}
+%%
+%%	\item 	Raspberry Radio Scanner
+%%	\href{https://www.hackster.io/news/top-dng-builds-a-600-digital-radio-scanner-on-the-cheap-with-a-raspberry-pi-5-and-rtl-sdr-18209905583e#:~:text=Pseudonymous%20YouTuber%20%22Top%20DNG%22%20has,at%20a%20far%20lower%20cost.}{$\gc{\bullet}$}
+%%\end{itemize}
+%%	\item Narrowband Estimation
+%%	\begin{itemize}
+%%		\item Energy Detection ($L_2$-based estimation) and Entropy-based detection
+%%		
+%%		Energy detection-based spectrum sensing machine
+%%		\href{https://link.springer.com/chapter/10.1007/978-981-99-2710-4_24}{$\gc{\bullet}$}
+%%		\item Shape signal Detection : correlation, cyclostationarity, covariance, waveform-based
+%%		\item Matched Filter ($L_2$-based filtering)
+%%		\item Matrix decomposition-based (eigenvalue detection)
+%%		
+%%		Maximizing Eigenvalue Using Machine Learning
+%%		\href{https://www.ijisae.org/index.php/IJISAE/article/view/3654}{$\gc{\bullet}$}
+%%		
+%%		FlashFFTConv \href{https://medium.com/@multiplatform.ai/stanford-researchers-introduced-flashfftconv-to-optimize-fft-convolutions-for-long-sequences-in-3ce8706517a8}{$\gc{\bullet}$}
+%%		
+%%		 Energy detection under noise power
+%%		\href{https://www.sciencedirect.com/science/article/pii/S1110016822008018}{$\gc{\bullet}$} 
+%%		
+%%		Multiscale Wavelet Transform Extremum Detection With the Spectrum Energy Detection
+%%		\href{https://ieeexplore.ieee.org/abstract/document/10238706}{$\gc{\bullet}$}
+%%		
+%%		Exploring DL for Adaptive Energy Detection Threshold Determination: A Multistage Approach
+%%		\href{https://www.mdpi.com/2079-9292/12/19/4183}{$\gc{\bullet}$}Deep Learning for Adaptive Energy Detection Threshold
+%%		\href{https://www.mdpi.com/2079-9292/12/19/4183}{$\gc{\bullet}$}
+%%\end{itemize}
+%%\item Wideband Estimation
+%%	\begin{itemize}
+%%	\item Nyquist-based. Wavelet-based, 
+%%	\item Filter-bank, and Multiple narrow bands
+%%\end{itemize}
+%%\item Detection Performance Metrics:
+%%
+%% Detection Probability, missed detection probability, False Alarm Probability, and Receiver operating characteristics curves. Signal to Noise ratio (SNR). 
+%% Evaluating the practical performance of energy detector based spectrum sensing for cognitive radio
+%% \href{https://pubs.aip.org/aip/acp/article-abstract/2787/1/050007/2902495/Evaluating-the-practical-performance-of-energy?redirectedFrom=fulltext}{$\gc{\bullet}$}
+%% 
+%%\end{itemize}
+%%%\clearpage\newpage
+%%%\section{Machine Learning Framework}
+%%%
+%%%\begin{DefQuot}{2.1}
+%%%{The \emph{Data Analytic Pipeline} automates machine learning workflows by processing and integrating data sets into a model to be evaluated and delivered, providing flexibility, efficiency, and better management in the framework implementation.}
+%%%\end{DefQuot}
+%%%
+%%%\begin{figure}[!ht]
+%%%	\centering
+%%%	\resizebox{\columnwidth}{!}{\includegraphics{Figures/data_analytics_stages.png} }
+%%%	\caption{Main Architecture}
+%%%\end{figure}
+%%%\bigskip
+%%%\begin{itemize}
+%%%	\item
+%%%	\emph{Data Collection \& Assembly} 
+%%%	
+%%%Acquisition, down/sampling, storage, and preparation of sample sets holding primary information about the inferring task under modeling.
+%%%	% data collection (dataset creation)
+%%%	% data exploration (understand the data)	
+%%%	\item
+%%%	\emph{Data Preprocessing}
+%%%	
+%%%	Inconsistent data is cleaning, transformed or encoded to be adequately parsed and fed into the compilation chain at a real computation burden.
+%%%	\item
+%%%	\emph{Model Building/Training}
+%%%	
+%%%	Selection/design of an appropriate machine learning algorithm for model training that specifies how to infer patterns in data.
+%%%	\item 
+%%%	\emph{Model Evaluation}
+%%%	
+%%%	The models are trained and tested on sample data sets to make predictions and choose the best-performing model.
+%%%	\item 
+%%%	\emph{Model Deployment}
+%%%	
+%%%	The machine learning model is deployed to the production line to obtain predictions based on real-time data.
+%%%\end{itemize}
+%%%
+%%%%\clearpage\newpage
+%%%%\subsection*{Data Preprocessing:} 
+%%%%
+%%%%%feature extraction, feature selection, dimensionality reduction, sampling
+%%%%
+%%%%\begin{itemize} 
+%%%%	\item[--] Formatting and Cleaning Data 
+%%%%	\item[--] Data Augmentation and Stratification 
+%%%%	\item[--] Feature Engineering and Data Transformation:
+%%%%\end{itemize}
+%%%%\medskip
+%%%%%\hypersetup{hidelinks}
+%%%%
+%%%%[$\checkmark$]\textsl{Formatting Data }
+%%%%\begin{itemize}
+%%%%		
+%%%%	\item Data Visualization\href{https://pub.towardsai.net/time-series-data-visualization-in-python-2b1959726312}{$\gc{\bullet}$}
+%%%%	
+%%%%	\item {Anomaly Detection:}
+%%%%	
+%%%%	\item {Missing Values and Imputation}
+%%%%	
+%%%%	\item {Statistical test on data}
+%%%%	
+%%%%	\item {Data Augmentation and Stratification}
+%%%%\end{itemize}
+%%%%
+%%%%[$\checkmark$]\textsl{Feature Engineering and Data Transformation}
+%%%%
+%%%%\begin{itemize}
+%%%%	\item Time Series Transformation and Feature Selection: 
+%%%%	\item {Latent Variable Decomposition}
+%%%%
+%%%%\end{itemize}
+%%%
+%%%\clearpage\newpage
+%%%\subsection*{Model Building/Training:} 
+%%%
+%%%[$\checkmark$] \textsl{DL Model Design }
+%%%	\begin{DefQuot}{1.2}
+%%%	{
+%%%\begin{itemize}
+%%%	\item[--] \textsl{Task}: Scanning of VHF/UHF frequencies
+%%%	\item[--] \textsl{Inference}: Prediction of power spectral density 
+%%%\end{itemize}
+%%%}
+%%%\end{DefQuot}
+%%%
+%%%\begin{figure}[!ht]
+%%%	\centering
+%%%	\resizebox{\columnwidth}{!}{\includegraphics[trim={0 19.1cm 0 0},clip]{Figures/MLScheme} }
+%%%	\caption{DL Model Architecture}
+%%%\end{figure}
+%%%
+%%%\begin{list}{--}{}
+%%%
+%%%\item \textsl{Multivariate Input Data}: Raw time-series data captured after IF mixer sampled at $22$\,\textit{Msps} 
+%%%
+%%%\item \textsl{Validation requirements}: 
+%%%
+%%%strategy
+%%%
+%%%sequencing
+%%%
+%%%\item \textsl{NN models}: 
+%%%\begin{description}
+%%%	\item[MLP] 
+%%%	\item[LSTM] 
+%%%	\item[VAE] 
+%%%\end{description}
+%%%
+%%%\clearpage\newpage
+%%%\item \textsl{Optimization of NN Models}: \gc{Speeding up vs performance scoring}
+%%%
+%%%Model Optimization frameworks
+%%%\begin{itemize}
+%%%	\item RandomSearch, Optimizacion Space:
+%%%	\item ?, Optimizacion Space:
+%%%	\item BayesianOpt, Optimizacion Space:
+%%%	\href{https://www.mdpi.com/2076-3417/14/6/2554}{$\gc{\bullet}$} 
+%%%	particle swarm optimization
+%%%	\href{https://link.springer.com/article/10.1007/s40747-023-01265-3}{$\gc{\bullet}$} 
+%%%	\href{https://www.ijisae.org/index.php/IJISAE/article/view/3729}{$\gc{\bullet}$} 
+%%%	\item Callbacks
+%%%	\href{https://medium.com/@ompramod9921/callbacks-your-secret-weapon-in-machine-learning-a054090b828f}{$\gc{\bullet}$} 
+%%%\end{itemize}
+%%%
+%%%Quantization techniques reducing the precision of weights and activations in a neural network to faster inference with minimal loss in accuracy. Time-series Dense Encoder
+%%%\href{https://medium.com/@plthiyagu/tide-time-series-dense-encoder-ae8f5aff1a9c}{$\gc{\bullet}$}\href{https://arxiv.org/pdf/2304.08424}{$\gc{\bullet}$} 
+%%%
+%%%Distributed Training: and GPU Acceleration: 
+%%%
+%%%Batch Processing
+%%%
+%%%Recoding in highly efficient C++ code and Memory Management
+%%%
+%%%
+%%%\end{list}
+%\end{enumerate}
+%
+%\begin{figure}[!ht] 
+%	\centering
+%	{\resizebox{.93\columnwidth}{!}{\includegraphics{Figures/SSTechniques}}} 	
+%	\caption{spectrum sensing techniques}
+%\end{figure}
+%
+%\begin{figure}[!ht] 
+%	\centering
+%	{\resizebox{.54\columnwidth}{!}{\includegraphics{Figures/SSTypes}}} 	
+%	\caption{Types of spectrum sensing\href{https://www.igi-global.com/pdf.aspx?tid=322771&ptid=307143&ctid=4&oa=true&isxn=9781668473665}{$\rojo{\bullet}$}}
+%\end{figure}
+%\clearpage\newpage
+%
+% 
+
+%\clearpage\newpage 
+%\section*{Concepts: CR -- SDR -- SS}
+%\begin{DefQuot}{2.1}
+%	{\begin{itemize}
+%			\item 
+%			\textit{Cognitive Radio}: intelligent processing and flow controlling of wireless communication for effective use of radio resources and to enable the coexistence between primary and secondary users (cognitive users).
+%		\end{itemize}
+%	}
+%\end{DefQuot}
+%\begin{enumerate}
+%	\item Primary User (PU) is a customer of the spectrum band, having licensed access at any time in a geographical area. Multiple PUs can use the same spectrum simultaneously -- MPU user cognitive radio network.
+%	\item Secondary User (SU or CR) is licensed to access bands of the spectrum when the corresponding PU or multiple PUs are not accessing them. 
+%\end{enumerate}
+%
+%The following three features set cognitive radio apart from conventional radio:
+%\begin{itemize}
+%	\item
+%	\textsl{Cognition}: CR is aware of its physical and administrative surroundings.
+%	\item
+%	\textsl{Reconfiguration}: This cognitive understanding allows CR to select whether to dynamically and independently change its parameters.
+%	\item
+%	\textsl{Learning}: CR can benefit from the experience and test new setups in fresh circumstances.
+%\end{itemize}
+%\bigskip
+%\begin{DefQuot}{2.1}
+%	{
+%		\textit{Spectrum Sensing} is the process of understanding of the state of channel occupancy and identifying the existence of spectrum holes in a geographical area before transmission is initiated. 
+%		
+%		The spectrum sensing problem is defined as a hypotheses test based on the presence of the primary user signal:
+%		
+%		\begin{itemize}
+%			\item $H_0$: No primary user signal is present (absence)
+%			
+%			\item $H_1$: primary user signal is present (presence)
+%		\end{itemize}
+%	}
+%\end{DefQuot}
+%\begin{list}{*-}{}
+%	\item{First-level compression}
+%	\begin{align*}
+%		X(N_{\max};\omega),&\quad \to \widehat{_{SNR}}, \hat{\gamma}\\
+%		X(N_{\max},\gamma,\widehat{_{SNR}};\omega),&\quad\to \textrm{thresholding}\\	
+%		X_{\eta}(N^{'}_{\max},\gamma;\omega)&\quad = \operatorname{AR-model}\{X(N_{\max},\gamma,\widehat{_{SNR}};\omega) - X(N_{\max};\omega) \} \\
+%		X(N_{\operatorname{opt}},\widehat{_{ SNR}};\omega)&\quad = 
+%		X(N_{\max},\gamma,\widehat{_{SNR}};\omega) + X_{\eta}(N_{\max},\gamma;\omega)\\
+%		&\quad = \operatorname{compress}\{X(N_{\max},\gamma,\widehat{_{SNR}};\omega) \} +
+%		\operatorname{compress}\{X_{\eta}(N_{\max},\gamma;\omega)\}\\
+%		&\quad = [\overline{x}(\omega_n){\ge} \gamma, \omega_n: n{\in} N^{c}_{X}] + [\alpha_k:k{\in} N^{c}_{\eta}] 
+%		\\&\quad \to N^{c}_{X} + N^{c}_{\eta}\ll N_{\max}
+%	\end{align*}
+%	\item{Second-level compression}
+%\end{list}
+%\clearpage\newpage
+%\begin{align*}
+%	X_{\eta}(N^{'}_{\max},\gamma;\omega)&\quad = \operatorname{imputation}\{X(N_{\max},\gamma,\widehat{_{SNR}};\omega) - X(N_{\max};\omega) \} \\
+%	%	X_{\eta}(N_{\max},\gamma;\omega)&\quad = X(N_{\max},\gamma,\widehat{_{SNR}};\omega) - X(N_{\max};\omega) \\
+%	\varXi(N_{\operatorname{opt}};\omega)&\quad=
+%	\operatorname{downsampling}\{\varXi(N^{'};\omega) : N^{'}\to N_{\operatorname{opt}} \} 
+%	\\
+%	%	 X(N_{\min};\omega)\quad\\ 
+%\end{align*}
+%\clearpage\newpage 
+
+\end{document}
+
+
+\begin{figure}[!ht] 	
+	{\resizebox{.51\columnwidth}{!}{\includegraphics{Figures/SDR}}} 	
+	\caption{ Software Defined Radio}
+\end{figure}
+
+\subsection{Testbed Optimization}
+ware with low precision support.
+
+Profiler Guided Optimization: Use profilers to identify hotspots in your code and focus optimization efforts where they will have the most impact.
+ 
+ vinos
+ beylis
+ https://www.facebook.com/reel/259940243768478
+ alfonso xiii
+ https://www.facebook.com/reel/188056137681576
+ El padrino
+ https://www.facebook.com/reel/1395175094422336
+ nieve de vodka
+ https://www.facebook.com/reel/1150172682622848
+ sangría
+ https://www.facebook.com/reel/727254439505830
+ tinto de verano
+ https://www.facebook.com/reel/3299811303652766
+ coctel pasion
+ https://www.facebook.com/reel/745758000764250
+ piña colada
+ https://www.facebook.com/reel/1282461045766959
+ 
+ https://medium.com/@viniciusqroz/using-keras-tuner-to-find-the-best-parameters-for-your-neural-network-model-2dc02e0a1203
+ https://blog.paperspace.com/hyperparameter-optimization-with-keras-tuner/
+ https://haneulkim.medium.com/hyperparameter-tuning-with-keras-tuner-full-tutorial-f8128397e857
+ https://medium.com/@maslovavictoria/bayesian-hyperparameter-optimization-of-gradient-boosting-machine-6f51996ff5f1
+ https://towardsdatascience.com/the-art-of-hyperparameter-tuning-in-python-c581a129d4e4
+ https://medium.com/@redeaddiscolll/deep-learning-for-time-series-forecasting-of-stock-78e4abd6ae30#id_token=eyJhbGciOiJSUzI1NiIsImtpZCI6IjkzNGE1ODE2NDY4Yjk1NzAzOTUzZDE0ZTlmMTVkZjVkMDlhNDAxZTQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2FjY291bnRzLmdvb2dsZS5jb20iLCJhenAiOiIyMTYyOTYwMzU4MzQtazFrNnFlMDYwczJ0cDJhMmphbTRsamRjbXMwMHN0dGcuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJhdWQiOiIyMTYyOTYwMzU4MzQtazFrNnFlMDYwczJ0cDJhMmphbTRsamRjbXMwMHN0dGcuYXBwcy5nb29nbGV1c2VyY29udGVudC5jb20iLCJzdWIiOiIxMTI2MTk3MDM0MzAyODM1MzE4NjMiLCJlbWFpbCI6ImdjYXN0ZWxsOUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwibmJmIjoxNzEyMzEwMDUxLCJuYW1lIjoiR2VybWFuIENhc3RlbGxhbm9zIERvbWluZ3VleiIsInBpY3R1cmUiOiJodHRwczovL2xoMy5nb29nbGV1c2VyY29udGVudC5jb20vYS9BQ2c4b2NMUGg5X21UM1RNYmZBWVd4Y2NIVElPTGRkQVpoSmR0MGY1eGpacENTYmR1QkhRMk00Qz1zOTYtYyIsImdpdmVuX25hbWUiOiJHZXJtYW4iLCJmYW1pbHlfbmFtZSI6IkNhc3RlbGxhbm9zIERvbWluZ3VleiIsImlhdCI6MTcxMjMxMDM1MSwiZXhwIjoxNzEyMzEzOTUxLCJqdGkiOiIwNjIxODZjNGQ5NDI3ZTBhMWRlZTFmMzgwYWJiY2QyZTU4NzVlOWM0In0.O_C0SI9o7yP8V7M16K7OHQspRpGsxW3LTFZ3_nVsD7kLG3iMFMVPwJkgI8-XojR8QL3LFqnlEg88j0ZPLqv_7Q6rFJ4Za5A3gYHh09Y8Mu24qBAi3ICZXgh2FE7W41WokL_CTzT02UmHDWSUzdXq14vLHRdhZcw2CCOEX6uZTsNeXK0eWeB2UkrxZmdzXpZZo-3aqEcDQ4JM7c_5InAmkDoS0-ycxMxCH4ZSLJnZWcoe0kLvDz7aieTiaHYI5mrLjJ773Xym7mzqswbhXuTAEeFxO_E2GYLng__ylPkI5JIYyV-NGbGwr0NKT-DnvTSdouFjfNzUqkbJDAvkXCt6vA
+ https://medium.com/@chenycy/accelerate-your-machine-learning-skills-with-hyperparameter-tuning-00dfd27e261c
+ https://towardsdatascience.com/tune-deep-neural-networks-using-bayesian-optimization-c9f6503a049f
+ https://gist.github.com/GermanCM/1943a0dc1eac04f848c6fe9b16947ac4
+ https://pyimagesearch.com/2021/06/07/easy-hyperparameter-tuning-with-keras-tuner-and-tensorflow/
+ https://www.peterspython.com/es/blog/lstm-optimizacion-multipaso-hyperparameter-con-keras-tuner}
+
+
+To visualize a 64QAM (64-Quadrature Amplitude Modulation) constellation diagram using an SDR (Software-Defined Radio), follow these steps:
+
+1. **Setup SDR**: Ensure your SDR is connected and properly configured with software like GNU Radio, SDR# (SDRSharp), or MATLAB.
+2. **Transmit/Receive Signal**: Use a signal generator or capture a 64QAM signal.
+3. **Demodulation**: Configure the demodulator in your software to process the received signal.
+4. **Plot Constellation**: Use the software’s plotting tools to display the constellation diagram.
+
+### Example:
+In GNU Radio, you can use a flowgraph with blocks for signal source, QAM modulator, channel model, QAM demodulator, and a constellation sink to visualize the 64QAM constellation.
+
+Here’s a brief example code snippet in GNU Radio Companion:
+
+```python
+# GNU Radio flowgraph snippet for 64QAM
+# Blocks: Signal Source -> 64QAM Modulator -> Channel Model -> 64QAM Demodulator -> Constellation Sink
+
+from gnuradio import gr
+from gnuradio import blocks
+from gnuradio import digital
+from gnuradio import channels
+from gnuradio import qtgui
+
+class QAMExample(gr.top_block):
+
+ def __init__(self):
+ gr.top_block.__init__(self, "64QAM Example")
+
+ # Parameters
+ samp_rate = 32000
+
+ # Blocks
+ self.src = blocks.vector_source_b([0,1,2,3,4,5,6,7]*10, True)
+ self.mod = digital.qam.qam_mod(constellation_points=64)
+ self.channel = channels.channel_model(noise_voltage=0.1)
+ self.demod = digital.qam.qam_demod(constellation_points=64)
+ self.sink = qtgui.const_sink_c(1024, '64QAM Constellation')
+
+ # Connections
+ self.connect(self.src, self.mod, self.channel, self.demod, self.sink)
+
+if __name__ == '__main__':
+ tb = QAMExample()
+ tb.start()
+ tb.wait()
+```
+
+This example sets up a simple flowgraph to modulate, transmit through a channel, demodulate, and then plot the 64QAM constellation.
+
+For further detailed implementation, you can refer to GNU Radio documentation or relevant SDR software manuals.
+
+%\item Preliminary Design of the Laboratory Stand for Remote and Subsurface Sensing
+%	\href{https://ieeexplore.ieee.org/abstract/document/10380333}{$\gc{\bullet}$}
+
+Curl is a multiplication between the nabla and a vector function.
+
+%%%%
+SW for Diversity Reception and Signal Combining: i) Maximal Ratio Combining (MRC): This technique weights and sums the signals from multiple antennas to maximize the signal-to-noise ratio.
+ii) Selection Combining: The best signal (based on a metric like signal strength) from multiple antennas is selected.
+
+\begin{python}
+	from gnuradio import gr
+	from gnuradio import blocks
+	from gnuradio import analog
+	from gnuradio import filter
+	from gnuradio import audio
+	
+	# Create a flow graph
+	fg = gr.top_block()
+	
+	# Sample rate set high enough to capture the entire FM signal bandwidth (e.g., 2.048 MHz).
+	sample_rate = 2.048e6 # 2.048 MHz
+	
+	# Signal source (e.g., from an RTL-SDR or file)
+	src = blocks.file_source(gr.sizeof_gr_complex, "fm_signal.dat", False)
+	
+	# Throttle block to control the sample rate
+	throttle = blocks.throttle(gr.sizeof_gr_complex, sample_rate, True)
+	
+	# Frequency translating FIR filter to shift the signal to baseband
+	freq_trans = filter.freq_xlating_fir_filter_ccc(1, [1], -250e3, sample_rate)
+	
+	# Low-pass filter to remove high-frequency components
+	lpf = filter.fir_filter_ccf(1, filter.firdes.low_pass(1, sample_rate, 100e3, 10e3))
+	
+	# FM demodulator
+	fm_demod = analog.wfm_rcv(
+	quad_rate=sample_rate,
+	audio_decimation=10,)
+	
+	# Audio sink to play the demodulated signal
+	audio_sink = audio.sink(int(sample_rate / 10), "", True)
+	###### The decimation factor is chosen to a manageable level for processing
+	## (e.g., reducing from 2.048 MHz to 204.8 kHz with a decimation factor of 10).
+	
+	# Connect the blocks
+	fg.connect(src, throttle, freq_trans, lpf, fm_demod, audio_sink)
+	
+	# Run the flow graph
+	fg.run()
+\end{python}

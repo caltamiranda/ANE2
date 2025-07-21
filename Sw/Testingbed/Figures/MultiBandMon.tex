@@ -1,0 +1,52 @@
+ \begin{tikzpicture}[node distance=2cm and 2.5cm, >=Stealth, thick, scale=0.9, transform shape]
+
+    % Nodes
+    \node (sensor1) [draw, rectangle, minimum width=2.5cm, minimum height=1cm] {Sensor module 1};
+    \node (data1) [left=1.5cm of sensor1] {data 1};
+    \node (proc1) [right=2.5cm of sensor1, draw, rectangle, minimum width=2.5cm, minimum height=1cm] {Sensor data processing 1};
+    
+    \node (sensor2) [below=2cm of sensor1, draw, rectangle, minimum width=2.5cm, minimum height=1cm] {Sensor module 2};
+    \node (data2) [left=1.5cm of sensor2] {data 2};
+    \node (proc2) [right=2.5cm of sensor2, draw, rectangle, minimum width=2.5cm, minimum height=1cm] {Sensor data processing 2};
+
+    \node (sensorn) [below=2cm of sensor2, draw, rectangle, minimum width=2.5cm, minimum height=1cm] {Sensor module n};
+    \node (datan) [left=1.5cm of sensorn] {data n};
+    \node (procn) [right=2.5cm of sensorn, draw, rectangle, minimum width=2.5cm, minimum height=1cm] {Sensor data processing n};
+    
+    % Embedded control node (centered between proc2 and procn)
+    \node (control) [right=3cm of $(proc2)!0.5!(procn)$, draw, rectangle, minimum width=2.5cm, minimum height=1cm] {Embedded control};
+
+    % Black arrows for outgoing data
+    \draw[->] (data1) -- (sensor1);
+    \draw[->] (sensor1) -- node[above] {Sensor data 1} (proc1);
+    \draw[->] (proc1.east) -- ++(1.5cm, 0);
+
+    \draw[->] (data2) -- (sensor2);
+    \draw[->] (sensor2) -- node[above] {Sensor data 2} (proc2);
+    \draw[->] (proc2.east) -- ++(1.5cm, 0); % La flecha negra que sale de Sensor data processing 2
+    
+    \draw[->] (datan) -- (sensorn);
+    \draw[->] (sensorn) -- node[above] {Sensor data n} (procn);
+    \draw[->] (procn.east) -- ++(1.5cm, 0);
+
+    % Double-headed red arrow between Sensor data processing 1 and Sensor data processing 2
+    \draw[<->, red, thick] (proc1.south) -- (proc2.north);
+
+    % Double-headed red arrow between Sensor data processing 2 and Sensor data processing n
+    \draw[<->, red, thick] (proc2.south) -- (procn.north);
+
+    % Double-headed red curved arrow from the midpoint of the double-headed arrow between Sensor data processing 1 and Sensor data processing 2
+    \draw[<->, red, thick] ($(proc1.south)!0.5!(proc2.north)$) to[out=30, in=120] node[midway, sloped, above, black] {Control signals} (control.north);
+
+  
+
+    % Puntos suspensivos (Ellipsis) sobre los nodos Sensor module n, Sensor data n, Sensor data processing n,
+    % corridos ligeramente a la izquierda (-0.3cm en el eje X)
+    \node at ($(sensor2)!0.5!(sensorn)+(-0.3cm,0)$) {\vdots};
+    \node at ($(data2)!0.5!(datan)+(-0.3cm,0)$) {\vdots};
+    \node at ($(proc2)!0.5!(procn)+(-0.3cm,0)$) {\vdots};
+    
+
+\end{tikzpicture}
+
+ 

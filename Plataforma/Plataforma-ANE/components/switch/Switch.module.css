@@ -1,0 +1,34 @@
+.mainContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+}
+
+.bar {
+    background-color: var(--gray-hover);
+    width: 35px;
+    height: 12px;
+    border-radius: 12px;
+}
+
+.circleOff {
+    background-color: var(--gray-active);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    position: absolute;
+    top: -3px;
+    /* left: -10px; */
+}
+
+.circleOn {
+    background-color: var(--orange-primary);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    position: absolute;
+    top: -3px;
+    left: 17px;
+}
