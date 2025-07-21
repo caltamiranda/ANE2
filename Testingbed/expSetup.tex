@@ -1,0 +1,226 @@
+\documentclass[10pt]{report}
+\usepackage{amsmath,amssymb} % For math symbols and environments
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage{geometry} % For setting page margins (optional)
+
+\geometry{a4paper, margin=1in} % Example: A4 paper with 1-inch margins
+
+\title{Signal Processing \& Estimation Tasks}
+\date{\today}
+
+\begin{document}
+\maketitle
+\section*{Narrow-band Power Spectral Density (PSD) methods}
+
+In spectrum sensing applications, particularly in cognitive radio systems, power spectral density (PSD) estimation is a fundamental tool for identifying signal presence in various frequency bands. Below is a summary of key PSD estimation methods used in spectrum sensing:
+
+\subsection*{1. Periodogram $\color{green} {\checkmark}$}
+\textbf{Description:} Given a discrete-time signal \( x[n] \), the periodogram estimates the PSD as the squared magnitude of its Discrete Fourier Transform (DFT):
+\[
+\hat{P}_{\text{per}}(f) = \frac{1}{N} \left| \sum_{n=0}^{N-1} x[n] e^{-j 2 \pi f n} \right|^2, \quad f \in [0, 1)
+\]
+where \( N \) is the number of samples.
+
+This method evaluates how much energy the signal contains at each frequency component. In the context of spectrum sensing, this enables the detection of spectral peaks that correspond to active transmissions (e.g., primary users in cognitive radio).
+
+{Properties}
+\begin{itemize}
+	\item \textbf{Resolution:} Determined by the length \( N \) of the signal. Larger \( N \) provides finer frequency resolution.
+	\item \textbf{Variance:} The periodogram is an inconsistent estimator; it does not converge to the true PSD as \( N \to \infty \), due to high variance.
+	\item \textbf{Spectral Leakage:} Abrupt windowing of the signal causes leakage, spreading power from strong frequencies into adjacent bins.
+\end{itemize}
+
+{Advantages}
+\begin{itemize}
+	\item Simple and fast to compute using the Fast Fourier Transform (FFT).
+	\item Useful for preliminary spectral exploration and real-time visualization.
+\end{itemize}
+
+{Disadvantages}
+\begin{itemize}
+	\item High variance and poor statistical consistency.
+	\item Low detectability in low SNR conditions.
+	\item Prone to spectral leakage, which may obscure weak signals.
+\end{itemize}
+
+{Application in Spectrum Sensing}
+\begin{itemize}
+	\item Identify spectral holes or vacant frequency bands.
+	\item Estimate energy in specific subbands for energy detection.
+	\item Serve as a baseline for comparison with more advanced PSD estimation methods (e.g., Welch, multitaper).
+	\item useful tool for fast spectrum estimation and provides valuable insights into signal occupancy. However, its limitations in resolution and variance often motivate the use of enhanced methods in practical spectrum sensing applications.
+\end{itemize}
+
+{Enhancements}
+To mitigate its limitations, the basic periodogram is often improved via:
+\begin{itemize}
+	\item \textbf{Averaging (Welch's method):} Reduces variance by averaging multiple periodograms.
+	\item \textbf{Windowing:} Applies tapering windows (e.g., Hamming) to reduce leakage.
+\end{itemize}
+
+
+\subsection*{2. Welch's Method $\color{green} {\checkmark}$}
+\textbf{Description:} Welch's method segments the input signal into overlapping windows, applies a tapering window function to each segment, computes the periodogram of each windowed segment, and then averages the resulting spectra. {Step-by-Step Procedure}:
+
+Let \( x[n] \) be a signal of length \( N \):
+\begin{enumerate}
+	\item Divide \( x[n] \) into \( K \) overlapping segments, each of length \( L \).
+	\item Apply a window function \( w[n] \) (e.g., Hamming) to each segment:
+	\[
+	x_k[n] = x[n + kD] \cdot w[n], \quad 0 \leq n < L
+	\]
+	where \( D \) is the shift between segments (determines overlap).
+	\item Compute the modified periodogram for each windowed segment:
+	\[
+	\hat{P}_k(f) = \frac{1}{U} \left| \sum_{n=0}^{L-1} x_k[n] e^{-j 2\pi f n} \right|^2
+	\]
+	where \( U = \frac{1}{L} \sum_{n=0}^{L-1} w^2[n] \) is a normalization factor.
+	\item Average all \( K \) periodograms to obtain the final PSD estimate:
+	\[
+	\hat{P}_{\text{Welch}}(f) = \frac{1}{K} \sum_{k=0}^{K-1} \hat{P}_k(f)
+	\]
+\end{enumerate}
+
+
+
+{Advantages}
+\begin{itemize}
+	\item \textbf{Reduced Variance:} Averaging smooths fluctuations, leading to a more stable estimate.
+	\item \textbf{Tunable Parameters:} Window length, overlap, and tapering window can be optimized for specific applications.
+	\item \textbf{Spectral Leakage Control:} Use of tapering windows reduces spectral leakage.
+\end{itemize}
+{Disadvantages}
+\begin{itemize}
+	\item \textbf{Reduced Frequency Resolution:} Due to windowing and segmentation.
+	\item \textbf{Increased Computational Load:} Requires computing multiple DFTs.
+\end{itemize}
+{Application in Spectrum Sensing}
+\begin{itemize}
+	\item \textbf{Detection of Spectral Occupancy:} Identifies frequency bands with significant energy.
+	\item \textbf{Noise-Robust Detection:} Performs well in low SNR environments.
+	\item \textbf{Real-Time Monitoring:} Efficient enough for online spectral analysis in dynamic systems.
+	\item Welch's method offers a practical and effective compromise between spectral resolution and variance reduction. It is well-suited for real-world spectrum sensing tasks where signal detection reliability is critical under noisy and dynamic conditions.
+\end{itemize}
+
+{Enhancements for Welch's PSD Estimation}
+\begin{itemize}
+	\item \textbf{Adaptive Windowing:} Dynamically adjusting the window length or type (e.g., Hamming, Kaiser, Blackman) based on the detected signal characteristics can improve resolution or leakage suppression.
+	
+	\item \textbf{Overlap Optimization:} Increasing the overlap between segments (typically 50\% to 75\%) enhances averaging and reduces estimation variance, at the cost of computational complexity.
+	
+	\item \textbf{Window Function Selection:} Choosing window functions with better side-lobe suppression (e.g., Kaiser over Hamming) can mitigate spectral leakage and improve detectability of weak signals.
+	
+	\item \textbf{Multiresolution Analysis:} Integrating Welch’s method with multi-resolution techniques (e.g., applying it across varying segment lengths) can provide better insights into wideband or multiband environments.
+	
+	\item \textbf{Noise Floor Estimation:} Combining Welch's PSD with noise floor tracking methods helps in establishing dynamic detection thresholds for energy-based sensing.
+	
+	\item \textbf{Parallel and GPU Implementation:} For real-time applications, Welch’s method can be parallelized across segments and implemented on GPUs to accelerate processing.
+	
+	\item \textbf{Pre-Filtering:} Applying bandpass filtering prior to Welch’s PSD computation can enhance the signal-to-noise ratio (SNR) for targeted frequency bands.
+	
+	\item \textbf{Hybrid PSD Estimators:} Combining Welch’s output with model-based or multitaper methods can provide hybrid estimates that balance resolution and variance under specific conditions.
+\end{itemize}
+
+\subsection*{3. Multitaper Method (MTM)}
+\textbf{Description:} Employs multiple orthogonal tapers (e.g., Slepian sequences) to compute independent PSD estimates which are then averaged.\\
+\textbf{Advantages:} Reduces spectral leakage; low variance; high spectral resolution.\\
+\textbf{Disadvantages:} Increased computational demand; requires taper design.\\
+\textbf{Use Case:} Detection of weak signals in noisy environments.
+
+\subsection*{4. Autoregressive (AR) Model-Based Estimation}
+\textbf{Description:} Assumes the signal is generated by an all-pole model excited by white noise.\\
+\textbf{Formula:}
+\[
+\hat{P}_{\text{AR}}(f) = \frac{\sigma^2}{\left|1 + \sum_{k=1}^p a_k e^{-j 2 \pi f k} \right|^2}
+\]
+\textbf{Advantages:} High resolution even with short data records.\\
+\textbf{Disadvantages:} Requires accurate model order selection; less effective for broadband signals.\\
+\textbf{Use Case:} Suitable for narrowband signal modeling and analysis.
+
+\subsection*{5. Wavelet-Based PSD Estimation}
+\textbf{Description:} Decomposes the signal using wavelet transforms and estimates power in each frequency band from the wavelet coefficients.\\
+\textbf{Advantages:} Good time-frequency localization; suitable for nonstationary signals.\\
+\textbf{Disadvantages:} Depends on wavelet choice and decomposition level.\\
+\textbf{Use Case:} Analysis of transient or nonstationary signals in dynamic spectral environments.
+
+\subsection*{6. Eigenvalue-Based Detection (Cyclic Spectral Analysis)}
+\textbf{Description:} Uses second-order statistics and eigenvalue distributions to detect periodicities or cyclostationarity in the signal spectrum.\\
+\textbf{Advantages:} Exploits signal structure; robust to interference.\\
+\textbf{Disadvantages:} Computationally intensive; requires prior knowledge of cyclic features.\\
+\textbf{Use Case:} Advanced detection of modulated signals in dense spectral environments.
+
+---
+
+\section*{Exp}
+Experimental setup should minimize variability and maximize reproducibility.
+
+\subsection*{Standardized Data Acquisition}
+
+\begin{itemize}
+ \item \textbf{Standardized Data Acquisition} – Use controlled conditions for signal collection, ensuring consistent sampling rates and minimizing external noise sources.
+ \item \textbf{Calibration \& Normalization} – Regularly calibrate instruments and apply normalization techniques to maintain comparability between measurements.
+\end{itemize}
+
+To rigorously evaluate calibration and normalization in your signal processing tasks, consider the following statistical testing methods:
+
+\begin{itemize}
+ \item[a.] Kolmogorov-Smirnov Test – Assess whether the distributions of calibrated and raw signals differ significantly. Useful for verifying consistency in normalization.
+ \item[b.] Paired t-Test or Wilcoxon Signed-Rank Test – If comparing pre- and post-normalization values, determine if the mean shift is statistically significant.
+ \item[c.] Levene’s Test or Bartlett’s Test – Examine the variance consistency across calibrated datasets, ensuring homogeneity.
+ \item[d.] ANOVA or Kruskal-Wallis Test – When dealing with multiple calibration groups, evaluate whether their means significantly differ.
+ \item[e.] Cross-Validation \& Residual Analysis – Use regression-based calibration models and analyze residual distributions to ensure stable normalization effects.
+\end{itemize}
+
+\subsection*{Robust Signal Processing Pipeline}
+
+Implement modular and reproducible Python scripts for preprocessing, filtering, and analysis, leveraging PyTorch for efficiency. Power Spectral Density (PSD) Verification – If measuring spectral components, verify consistency in Welch’s method parameters, such as windowing and overlap, to reduce bias.
+
+\section*{Methods for Spectral Component Analysis}
+
+key methods to verify the consistency, accuracy, and significance of spectral components:
+
+\begin{itemize}
+ \item[a.] Welch’s T-test – Used to compare mean PSD values across different conditions, ensuring statistically significant differences in spectral power.
+ \item[b.] Kolmogorov-Smirnov (KS) Test – Validates whether two PSD distributions differ significantly, useful when comparing different windowing techniques.
+ \item[c.] F-test for Variance – Assesses the consistency of spectral estimations by comparing variance across different segments of Welch’s method.
+ \item[d.] Chi-Square Goodness-of-Fit – Evaluates whether observed PSD values align with expected distributions, particularly in noise characterization.
+ \item[e.] Bootstrap Resampling – Estimates confidence intervals for PSD values by resampling the data, improving reliability in spectral analysis.
+ \item[f.] Cross-Correlation \& Coherence Analysis – Measures the similarity between two signals in the frequency domain, ensuring spectral stability across conditions.
+ \item[g.] ANOVA for Multi-Condition Analysis – If comparing PSDs across multiple experimental setups, ANOVA helps determine significant spectral differences.
+\end{itemize}
+
+\subsection*{Visualization for Diagnostics}
+
+Use clear comparative plots to identify anomalies in signal trends across different experimental runs.
+
+\section*{Statistical Tests in Spectrum Sensing}
+
+statistical tests help verify the consistency, accuracy, and significance of spectral components in spectrum sensing applications:
+
+\begin{itemize}
+ 
+ \item[$\color{green} {\checkmark}$] Welch’s T-test – Compares mean spectral power across different sensing scenarios, helping detect significant changes in signal presence.
+ 
+ "Optimal Threshold of Welch’s Periodogram for Spectrum Sensing Under Noise Uncertainty".	\url{P:/P01 SDR/Chi-square.pdf}
+ \item[$\color{green} {\checkmark}$] Bootstrap Resampling – Estimates confidence intervals for spectral features, improving reliability in dynamic environments.
+ 
+ "Robust Spectrum Sensing Using Moving Blocks Energy Detector with Bootstrap".
+ \item[$\color{green} {\checkmark}$] F-test for Variance Analysis – Compares the variance of spectral estimates across different sensing conditions, ensuring stability.
+ 
+ "A Simple F-Test Based Multi-Antenna Spectrum Sensing Technique".
+ \item Kolmogorov-Smirnov (KS) Test – Evaluates whether PSD distributions differ significantly between sensing periods, ensuring consistency across measurements.
+ 
+ "Sequential and Parallelized FPGA Implementation of Spectrum Sensing Detector Based on Kolmogorov-Smirnov Test".
+ \item Chi-Square Goodness-of-Fit – Assesses whether observed spectral distributions match expected noise or signal models.
+
+"Spectrum Sensing Method Based on Goodness of Fit Test Using Chi-Square Distribution".
+ \item ANOVA for Multi-Scenario Analysis – Determines whether multiple sensing conditions exhibit statistically different spectral characteristics.
+
+"A Comparative Study of Different Entropies for Spectrum Sensing Techniques".
+ \item Shapiro-Wilk Test – Validates normality assumptions of PSD estimates, crucial for applying parametric statistical methods.
+
+"Spectrum Sensing Algorithm Based on Shapiro-Wilk Test".
+\end{itemize}
+
+\end{document}

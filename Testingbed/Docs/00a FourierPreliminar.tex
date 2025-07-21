@@ -1,0 +1,401 @@
+\documentclass[17pt,a4paper]{extarticle}
+\usepackage[p,osf]{scholax}
+\usepackage{amsfonts,amstext,amsbsy,amsopn,amsmath,eucal,bm,mathrsfs}
+% amssymb should not be loaded
+\usepackage[cp1252]{inputenc}
+%\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage[varqu,varl]{zi4}% inconsolata
+\usepackage[scaled=1.075,ncf,vvarbb]{newtxmath}% need to scale up math package % vvarbb selects the STIX version of blackboard bold.
+\normalfont
+\usepackage[parfill]{parskip}% Begin paragraphs with an empty line rather than an indent
+\usepackage{hyperref}
+\usepackage{wrapfig} % wrapping figures
+\usepackage{graphicx,color}
+\usepackage[caption = false]{subfig}
+\usepackage{fancyhdr} % For headers and footers
+\usepackage[landscape]{geometry}
+\usepackage{enumitem}
+\usepackage{linguex}
+\usepackage{lineno}
+\usepackage[capitalise]{cleveref}
+\usepackage[most]{tcolorbox}
+
+\tcbset{colback=yellow!10!white, colframe=red!50!black, 
+	highlight math style= {enhanced, %<-- needed for the ’remember’ options
+		colframe=gray,colback=gray!10!white,boxsep=0pt}
+}
+
+\providecommand{\promed}[1]{{\mathbb{E}}\left\lbrace #1\right\rbrace}% operador de promedio
+\providecommand{\ve}[1]{{\boldsymbol {#1}}} %
+\providecommand{\mat}[1]{{\pmb {#1}}} %
+\providecommand{\est}[1]{{\widetilde {#1}}}
+\DeclareMathOperator{\tire}{\negthinspace-\negthinspace}
+\providecommand{\s}[1]{\negthickspace#1\negthickspace}%
+\newcommand{\Real}{\mathbb{R}}\newcommand{\N}{\mathbb{N}}
+\newcommand{\subconj}{\negthinspace\subset\negthinspace }
+\newcommand{\igual}{\negthinspace=\negthinspace}
+\newcommand{\x}{\negthickspace\times\negthickspace}
+\newcommand{\gc}[1]{\textcolor[rgb]{1.00,0.00,0.00}{#1}}
+\newcommand{\am}[1]{\textcolor[rgb]{0.00,0.25,0.00}{#1}} 
+\providecommand{\var}[1]{{\ensuremath{var}}\{#1\}}
+\newcommand{\cita}[1]{\textcolor[rgb]{0.23, 0.27, 0.29}{\boxed{{\Large #1}}}}
+\newcommand{\alp}[1]{\textcolor[rgb]{0.00,0.00,1.00}{\small\texttt{#1}}}
+% example
+\usepackage{mdframed} % Add easy frames to paragraphs
+\usepackage{xparse} % Add support for \NewDocumentEnvironment
+\definecolor{graylight}{cmyk}{.30,0,0,.67} % define color using xcolor syntax
+
+\newmdenv[ % Define mdframe settings and store as leftrule
+linecolor=graylight,
+topline=false,
+bottomline=false,
+rightline=false,
+skipabove=\topsep,
+skipbelow=\topsep
+]{leftrule}
+
+\NewDocumentEnvironment{example}{O{\textbf{Example:}}} % Define example environment
+{\begin{leftrule}\noindent\textcolor{graylight}{#1}\par}
+	{\end{leftrule}}
+%%
+
+\sloppy
+\makeatletter
+\newcommand{\labelpethau}[1]{\texttt{#1}:}
+\newlength\normalparindent
+\setlength\normalparindent{\parindent}
+\newenvironment{pethau}%
+{\begin{list}{}%
+		{\renewcommand{\makelabel}{\labelpethau}%
+			\setlength{\itemindent}{0pt}%
+			\setlength{\leftmargin}{0pt}%
+			\setlength{\labelwidth}{-1\normalparindent}%
+			\addtolength{\topsep}{-0.5\parskip}%
+			\listparindent \normalparindent
+			\setlength{\parsep}{\parskip}}}%
+	{\end{list}}
+\makeatother
+%%
+ \geometry{
+ a4paper, % Change this if you intend to print on a different paper size, such as letter paper.
+ total={210mm,297mm},
+ left=20mm,
+ right=20mm,
+ top=30mm,
+ bottom=30mm,
+ }
+\pagestyle{fancy}
+
+%Settings
+\newcommand{\courseName}{\emph{Linear Signal Decomposition}} % Insert course name here
+\title{\courseName}
+
+\lhead{\courseName} % Left header
+\chead{} % Center header
+\rhead{} % Right header
+\lfoot{} % Left footer
+\cfoot{\thepage} % Center footer
+\rfoot{} % Right footer
+
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.3pt}
+\renewcommand*\rmdefault{ppl} %Set font
+\usepackage{trace}
+\usepackage[labelformat=empty]{caption}
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+\begin{list}{.-}{}
+	\item \textsl{Discrete Representation}\, Fourier Series	 
+	\item \textsl{Integral Representation}\, Fourier Transform
+	\item Implementation of FT
+\end{list}
+\clearpage
+\linenumbers
+\section*{Discrete Decomposition of Energy Signals} 
+\begin{wrapfigure}{r}{.51\textwidth}
+	\centering
+	\input{Figures/genbases}
+	\caption{Decomposition and reconstruction of $\ell _2$ signals} 
+\end{wrapfigure}
+Generalized Orthogonal Fourier Expansion:
+\begin{linenomath*}
+\begin{align*}
+	& \,\textrm{given }x, \{\phi_{n}:n\in N\}\in \ell _2(T), \forall t\in T\in \Real\\
+	\\
+	x(t)&\approx{{\displaystyle\sum\limits_{n\in N}}
+	x_{n}\phi_{n}(t)} ,\\
+\textrm{s.t.:}& \quad \|x(t)-\displaystyle\sum\nolimits_{\forall n}x_{n}\phi_{n}(t)\|^{2}_2\to 0\\
+&\\
+\textrm{then, } x_n & = \tcboxmath{\frac{\langle x,\phi^{*}_{n}\rangle_{\ell_2\left(T\right)} }{\|x\| _2\|\phi_{n}\| _2},\quad x_n\in \mathbb{C}}\, \\ \\
+\textrm{Set }\{x_n{:}n{\in} N\}& \,\textrm{ is termed \textit{Spectral Decomposition}}
+\end{align*}
+\end{linenomath*}
+\cleardoublepage
+\subsection*{Fourier Series}
+Assume the following orthogonal function set
+\begin{linenomath*}
+\begin{align*}
+	\phi_{n}(t)&=e^{jn\lambda t}, \quad n\in\left\{ 0,\pm1,\pm2,\ldots\right\}, \lambda\in \Real^{+}\\
+\lambda &= 2\pi/\|\phi_{n}\|^{2} _2 \textrm{ is a time-scale constant,}\\
+& \qquad\{n\} \textit{- harmonic set.} \\ \\
+\textrm{Spectral components}\\
+	{x_{n}}&=\tcboxmath{\frac{1}{T}\int\nolimits_{T}x(t)e^{-jn\lambda t}dt,}\,\\
+	\textrm{Aperiodic signals: } x(t)\ne x(t - T), \forall t\in T\quad \lambda&=2\pi/ T\\	
+	\textrm{periodic signals: } x(t)= x(t - T), \forall t\in T \quad \; \lambda&=\omega_0 	
+\end{align*}
+\end{linenomath*}
+	\alp{00a1 FourierSeries} \href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a1%20FourierSeries-71aed2d7ceb94098988500406eafa9dd}{$\gc{\bullet}$} 
+
+\clearpage
+\subparagraph{\textit{Dirichlet conditions}}
+
+\begin{enumerate}
+	\renewcommand{\labelenumi}
+	{\alph{enumi}).}
+	\item $x(t)$ must be absolutely integrable over a period of analysis $T$, that is,%
+	\begin{displaymath}{{\displaystyle\int\limits_{\lambda}^{\lambda+T}}
+		\left\vert x(t)\right\vert dt<\infty }\quad [\textrm{weak condition}]
+	\end{displaymath}
+\item[.] $x(t)$ must be of bounded variation in any given bounded interval
+$T$.
+\item[.] $x(t)$ must have a finite number of discontinuities in any given bounded interval, and the discontinuities cannot be infinite.
+\end{enumerate}
+
+For a function $x$ fulfilling all Dirichlet conditions, the following limiting expressions hold:
+\begin{displaymath}{
+	\checkmark\quad	\lim_{v\rightarrow\infty}{\displaystyle\int\limits_{a}^{b}}
+		x(\zeta)\cos(v\zeta)d\zeta=\lim_{v\rightarrow\infty}{\displaystyle\int\limits_{a}^{b}}
+		x(\zeta)\sin(v\zeta)d\zeta=0 
+	}
+ \end{displaymath}
+	meaning that either spectral value $x_n,x_{-n}$ tends to zero, whenever $n,-n\rightarrow\infty$.
+ 
+\begin{displaymath}
+		\checkmark\quad	{x(t)\igual {{\displaystyle\sum\nolimits_{n\in N}}
+	x_{n}e^{-jn\lambda t}}= x(t_{+})+x(t_{-})/2},\, \textrm{where }x(t_{+,-})\igual \lim_{t\rightarrow t_{+,-}}x(t)
+\end{displaymath}
+ 
+\clearpage
+\begin{example} Let $
+x(t){=}a{\sum\nolimits_{k}} \operatorname{rect}_{\tau}(t{-}kT),
+$ be an infinite sequence of rectangular pulses, with $\omega_{0}\igual{2\pi}/{T}:$
+\begin{linenomath*}
+	\begin{align*}
+		x_{n} & =\dfrac{1}{T}{\displaystyle\int\limits_{-T/2}^{T/2}}
+		x(t)e^{-jn\omega_{0}t}dt=\dfrac{1}{T}{\displaystyle\int\limits_{-\tau/2}^{\tau/2}}
+		ae^{-jn\omega_{0}t}dt \\
+		 & =\dfrac{-a}{jn\omega_{0}T}\left( e^{-jn\omega_{0}\tau /2}-e^{jn\omega_{0}\tau/2}\right)\\
+		 &=2\dfrac{a}{n\omega_{0}T}\sin\left(
+		n\omega_{0}\dfrac{\tau}{2}\right) \\
+		& =\dfrac{a\tau}{T}\dfrac{\sin(n\omega_{0}\tau/2)}{n\omega_{0}\tau
+			/2}\\
+		x_{n} &=\cita{\dfrac{a\tau}{T}\operatorname{sinc}\left(n\omega_{0}\tau/2\right),\quad n\neq
+		0\label{xn_pulrec}}\\ 
+		x_{0} & =\dfrac{1}{T}{\displaystyle\int\limits_{-\tau/2}^{\tau/2}}
+		a\,dt=\dfrac{a\tau}{T} ,\quad n= 0
+	\end{align*}
+\end{linenomath*}
+\end{example}
+\clearpage
+
+\section*{Continuous Representation of Energy Signals} 
+\begin{linenomath*}\begin{equation*}
+X(\omega)=	\tcboxmath{\displaystyle\int\limits_{-\infty}^{\infty} x(t)e^{-j\omega
+	t}dt}\overset{\vartriangle}{=}\mathscr{F}\left\{ x(t)\right\},\, x:\Real \mapsto \mathbb{C}
+\end{equation*}
+\end{linenomath*}
+\begin{example}
+Let $x(t){=}a\operatorname{rect}_{\tau}(t)$, $a{\in} \Real, \tau{\in}\Real^{+}$. \alp{00a2 FourierTransform}
+\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a2%20FourierTransform-394c1ed31b81431690c016c72de4a6a6}{$\gc{\bullet}$},	\alp{00a2- (A)PeriodicRect}
+\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a2-%20(A)PeriodicRect-cd372a5f709f4858a893e5d4230389db}{$\gc{\bullet}$}
+\begin{linenomath*}\begin{align*}
+\tcbhighmath[remember as=Xw]{X(\omega)} & ={\displaystyle\int\limits_{-\infty}^{\infty}} a\operatorname{rect}_{\tau}(t)e^{-j\omega
+	t}dt =a {\displaystyle\int\limits_{-\tau/2}^{\tau/2}}
+e^{-j\omega t}dt\\ &=\frac{a}{j\omega}(e^{j\omega\tau/2}-e^{-j\omega\tau/2})\\
+&=\dfrac{a\tau
+	\sin(\omega\tau/2)}{\omega\tau/2}\\
+ & =
+ \tcbhighmath[remember,overlay={%
+ 	\draw[blue,very thick,->] (Xw.south) to[bend right] ([yshift=2mm]frame.west);}]
+ {a\tau\operatorname{sinc}(\omega\tau/2)}
+\end{align*}\end{linenomath*}
+\end{example} 
+\clearpage
+
+\subsection*{Fourier Transform: Main Properties} 
+\subparagraph{\textit{Linearity}.} Let $X_{n}(\omega)=\mathscr{F} \{x_{n}(t)\},$ then, it holds that %
+\begin{linenomath*}\begin{equation*}
+	\tcboxmath{\mathscr{F}\left\{ {\displaystyle\sum\limits_{n}} a_{n}x_{n}(t)\right\}
+		={\displaystyle\sum\limits_{n}} a_{n}X_{n}(\omega),}\quad
+		\forall a_{n}=\operatorname{const.} 
+\end{equation*}\end{linenomath*}
+
+\begin{example}
+Find an approximated linear model of $\Re\{\exp(j(\omega_ct +a(t)))\}$, assuming that $a(t)$ behaves very slowly over time. 
+\\
+Using Taylor series of $\exp(ja(t))$, we have
+$$\exp(ja(t)) = 1 + j a t - (a^{2} t^2)/2 - j a^3 t^3/6 + (a^4 t^4)/24 + 1/120 j a^5 t^5 + O(t^6)\quad
+\textrm{(Taylor series converges everywhere)}$$
+
+An approximating linear model would be: 
+\begin{linenomath*}\begin{align*}\Re\{\exp(j(\omega_ct +a(t)))\} &\approx (1 + j a t ) \cos \omega_c t \\&= \cos \omega_ct - j a \sin \omega_ct,\, 
+\end{align*}\end{linenomath*}
+\end{example}
+
+\clearpage
+{\alp{00a3 FT-property}}
+\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a3%20FT-property-0003ea3ba9c34f42bea9baf0854c682d}{$\gc{\bullet}$}
+\subparagraph{\textit{Conjugate.}}
+	\begin{linenomath*}\begin{equation*}
+	\cita{\mathscr{F}\{x^{\ast}(t)\}=X^{\ast}(-\omega)}
+	\end{equation*} \end{linenomath*}
+\begin{pethau}
+	\item[Exercise] Let $x(t)= \exp(jt)$\\
+\end{pethau}
+
+\subparagraph{\textit{Symmetry.}} Let $x(t)=x_{\Re}(t)+jx_{\Im}(t)$, being $\mathscr{F}$ $\{x_{\Re}(t)\}=X_{\Re}(\omega)$ and $\mathscr{F}$ $\{x_{\Im
+}(t)\}=X_{\Im}(\omega).$ \\
+So, it holds that 
+\begin{linenomath*}\begin{equation*}
+		\cita{X(\omega)= X_{\Re}(\omega)+jX_{\Im}(\omega)}
+\end{equation*} \end{linenomath*}
+
+\begin{pethau}
+	\item[Exercise] Extract the real and imaginary parts from $e^{jt}$. Find FT for both terms
+\end{pethau}
+
+\subparagraph{\textit{Duality. }} Let $\mathscr{F}$ $\{x(t)\}=X(\omega),$ then 
+\begin{linenomath*}
+	\begin{equation*}\cita{\mathscr{F}\{X(t)\}=2\pi x(-\omega)}
+	\end{equation*} 
+\end{linenomath*}
+
+\begin{pethau}
+	\item[Exercise] Let a couple of signals $x(\cdot)=\operatorname{rect}_{\tau}(\cdot)$ 
+	and $X(\cdot)=\operatorname{sinc}(\cdot)$. Plot both signals over time and frequency domains. 
+\end{pethau}
+
+\subparagraph{\textit{Scaling. }} Let $\mathscr{F}\{x(t)\}=X(\omega),$ then 
+\begin{linenomath*}\begin{equation*}\cita{\mathscr{F}\{x(\alpha t)\}= {X(\omega/\alpha)}/{\alpha},\,\forall \alpha\in\Real^{+}}\end{equation*}\end{linenomath*}
+
+\begin{pethau}
+	\item[Exercise] Let $x(\alpha t)=\operatorname{rect}_{\tau}(\alpha t)$. Compute FT for $\alpha\to 0$ and $\alpha\to\infty$.
+\end{pethau}
+
+\subparagraph{\textit{Domain shifting. } }
+\begin{linenomath*}\begin{align*}
+	\cita{\mathscr{F}\{x(t-t_{0})\}=X(\omega)e^{-j\omega t_{0}},\, t_0\in\Real^{+}}&\textrm{ Time delay}\\
+		\cita{\mathscr{F}\{x(t)e^{\pm j\omega_{c}t}\}=X(\omega\mp\omega_{c}),\,\omega_{c}\in\Real^{+}}&\textrm{ Spectral modulation}
+\end{align*} \end{linenomath*}
+
+\textsl{Remark}
+\begin{linenomath*}\begin{equation*}\mathscr{F}\{\delta(t-t_{0})\}={\displaystyle\int\limits_{-\infty}^{\infty}}
+	\delta(t-t_{0})e^{-j\omega t}dt=e^{-j\omega t_{0}}\end{equation*} \end{linenomath*}
+Having just the real part of the exponential carrier $e^{\pm j\omega_{c}t}$, we have:
+\begin{linenomath*}\begin{align*}
+	\mathscr{F}\{x(t)\Re\{e^{-j\omega_{c}t}\}\}&=\mathscr{F}\{x(t)\cos(\omega _{c}t)\}=\mathscr{F}\left\{
+	x(t)\left( {(e^{j\omega_{c}t}+e^{-j\omega _{c}t})}/{2}\right) \right\} ,\\
+	&= \left(
+	X(\omega+\omega_{c})+X(\omega-\omega_{c})\right)/2 %
+	\end{align*}\end{linenomath*}
+
+\begin{pethau}
+	\item[Exercise]For $x(t)=\operatorname{rect}_{\tau}(t)$, simulate one-side and double-side spectral translation (Amplitude modulation)
+\end{pethau}
+
+\subparagraph{\textit{Convolution of two functions}}
+\begin{linenomath*}\begin{align*}
+\cita{\mathscr{F}\left\{ x_{m}(t)x_{n}(t)\right\}} &=\cita{\left(
+	X_{m}(\omega)\ast X_{n}(\omega)\right)/ {2\pi}}&\textrm{frequency domain}	 \\	
+	\cita{\mathscr{F}\left\{ x_{m}(t)*x_{n}(t)\right\}} &= \cita{\left(
+		X_{m}(\omega) X_{n}(\omega)\right)}&\textrm{time domain}
+	\end{align*}\end{linenomath*}
+
+\subparagraph{\textit{Parseval Relationship}.} Demonstrate that $\left\langle {X,Y} \right\rangle = \left\langle {x,y} \right\rangle$. 
+
+Hint: See the property of duality. 
+\subparagraph{\textit{FT}: Implementation.}
+\begin{itemize}
+	\item[--] Sampling theorem and leakage \alp{00a4-1 DFTSamplig} \href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a4-1%20DFTSamplig-18ba00e2cf9b4daa936617b092bfe695}{$\gc{\bullet}$}
+	\item[--] Filter bank \alp{00a4-2 DFTFilterBank}
+	\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a4-2%20DFTFilterBank-46284293d4b84b5a9aa936239336352c}{$\gc{\bullet}$}
+	\item FFT
+	\href{https://mecha-mind.medium.com/an-excursion-into-fast-fourier-transform-part-2-81461f125880}{$\gc{\bullet}$} NumPy, SciPy FFTs
+	\href{https://medium.com/@Doug-Creates/numpy-scipy-ffts-distinct-performance-real-valued-optimizations-917a9f649aa5}{$\gc{\bullet}$}
+\end{itemize}
+\clearpage
+\subparagraph{\textit{FT}: Remaining issues.}
+\begin{itemize}
+	\item[--] Multivariate computation 
+	
+	\item[--] Lack of resolution because of inherent compromise between frequency and time domains	
+	
+	\item[--] Low compactness of expansion: \textbf{Choose other orthogonal basis function sets}.
+	
+	\item[--] FT fits only $\mathcal{L}_{2}$ functions. \alp{00a4-5 LaplaceTransf}
+	\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a4-5%20LaplaceTransf-81b1ecd3e1504bd49e70f895afd75b17}{$\gc{\bullet}$}
+\end{itemize}
+\begin{figure}[!h] 
+	\centering
+	{\resizebox{.42\columnwidth}{!}{\includegraphics{figures/FT_Resolution.png}}} 
+\end{figure}
+\clearpage
+
+\begin{wrapfigure}{r}{.51\textwidth}
+	\centering
+	{\resizebox{0.48\textwidth}{7.2cm}{\includegraphics{figures/bearcon_time_signal_bsf.eps}}} 
+	{\resizebox{0.48\textwidth}{4.8 cm}{\includegraphics{figures/ST.png}}}
+	%\caption{Spectrogram} 
+\end{wrapfigure}
+\subparagraph{[Multivariate] Power Spectral Density} of several trajectories: \alp{00a4-3 PSD}
+\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a4-3%20PSD-10765ee3e8f246139959dc962eb47afe}{$\gc{\bullet}$}
+\begin{align*}
+	S_{x}(\omega)&=\lim_{T\rightarrow\infty}\frac{|X_{T}(\omega)X_{T}^{*}(-\omega)|}{T}\geq 0,\\ X_{T}(\omega)&=\mathscr{F}\{x(t)\operatorname{rect}(t/T)\}
+\end{align*}
+ 
+\subparagraph{Short-time FT analysis of signals} applies on a time segmented representation: $x_T(t){=} x(t)\nu_T(t),\,\forall t{\in} T$, dealing with weighting functions, which have support compact\footnote{ function has non-zero values in a certain range and zeros elsewhere.} $T{\in} \Real^{+}$ (termed \textit{sliding window}) $\nu_T(t-u)$:
+\begin{linenomath*}\begin{equation*}
+	X_\nu(\omega)={\displaystyle\int\limits_{-\infty}^{\infty}} x(t)\nu_T(t-u)e^{-j\omega 
+		t}dt
+	\end{equation*}\end{linenomath*}
+\clearpage
+\begin{wrapfigure}{r}{.51\textwidth}
+	\centering
+	\subfloat[$w(t)$]{\resizebox{.321\columnwidth}{4.2cm}{\includegraphics{figures/WindowsTime.png}}}\\
+	\subfloat[Hamming]{\resizebox{.321\columnwidth}{4.2cm}{\includegraphics{figures/ESD43.png}}}
+	\caption{Short-Time FT analysis}\label{Fig:ST-F}	
+\end{wrapfigure}
+A general symmetric apodization function $\nu(t)$ can be written as a Fourier series (cosine-sum window):
+\begin{align*}
+\nu_W(t)&= \nu_0+2\sum_{n=1}^\infty{\nu_n \cos(n \pi t/W)},\, W\in\Real^{+}\\
+&\textrm{s.t.: } \nu_0+2\sum_{n=1}^\infty{\nu_n }=1
+\end{align*}
+when $\nu_0{=} 0.54,\nu_1{=}0.23$, Hamming window. (See other windows: Blackman, Nuttall, Gaussian, Poisson, Tukey, Dolph-Chebyshev). 
+% a=5/4, a=4/3,w_0=1,
+
+\alp{00a4-4 STFT}
+\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a4-4%20STFT-f395c565415a412bb205a4b0b60bdd04}{$\gc{\bullet}$}
+
+\textbf{Practical application}: \alp{00a4-6 ECG}
+\href{https://deepnote.com/workspace/gcpds-76307f69-c109-4b50-8818-29b8600ffe98/project/Fundamentals-ef1064c8-5ffe-4039-a3f4-6f71bb3de118/notebook/00a4-6%20ECG-cf4a9a2815f1422dbb7ef0f3e96efed6}{$\gc{\bullet}$}Speech
+\href{https://towardsdatascience.com/understanding-audio-data-fourier-transform-fft-spectrogram-and-speech-recognition-a4072d228520}{$\gc{\bullet}$}
+
+\end{document}
+
+Eigenvalues and Eigenvectors
+
+https://personal.math.ubc.ca/~pwalls/math-python/linear-algebra/eigenvalues-eigenvectors/
+
+https://cran.r-project.org/web/packages/matlib/vignettes/eigen-ex2.html
+
+https://www.tutorialspoint.com/how-can-scipy-be-used-to-calculate-the-eigen-values-and-eigen-vectors-of-a-matrix-in-python
+
+https://vitalflux.com/eigenvalues-eigenvectors-python-examples/
+
+https://stats.stackexchange.com/questions/539436/get-accurate-eigenvectors-when-eigenvalues-are-minuscule
+
+https://python.quantecon.org/svd_intro.html
+
+https://towardsdatascience.com/decomposing-eigendecomposition-f68f48470830
